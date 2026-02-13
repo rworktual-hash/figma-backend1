@@ -6,13 +6,13 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Initialize Gemini
+// Initialize Gemini with your working key
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Enable CORS for Figma
 app.use(cors({
     origin: ['null', 'https://www.figma.com', 'http://localhost:*', 'file://'],
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true
 }));
 
@@ -22,40 +22,70 @@ app.use(express.json({ limit: '50mb' }));
 app.get('/', (req, res) => {
     res.json({ 
         status: 'online', 
-        message: '✅ Figma backend with Gemini is LIVE!',
+        message: '✅ Figma backend with Gemini 2.5 Flash is LIVE!',
+        endpoints: {
+            health: 'GET /',
+            status: 'GET /api/status',
+            generate: 'POST /api/generate-design',
+            process: 'POST /api/process'
+        },
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Status endpoint
+app.get('/api/status', (req, res) => {
+    res.json({
+        status: 'online',
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development',
+        model: 'gemini-2.5-flash',
+        gemini_configured: !!process.env.GEMINI_API_KEY,
         timestamp: new Date().toISOString()
     });
 });
 
 // ===========================================
-// GENERATE DESIGN FROM PROMPT
+// GENERATE DESIGN FROM PROMPT - USING WORKING GEMINI 2.5 FLASH
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
     try {
         const { prompt } = req.body;
         
         if (!prompt) {
-            return res.status(400).json({ error: 'Prompt is required' });
+            return res.status(400).json({ 
+                success: false,
+                error: 'Prompt is required' 
+            });
         }
 
         console.log('🎨 Generating design for:', prompt);
+        console.log('🤖 Using model: gemini-2.5-flash (confirmed working)');
 
-        // Get Gemini model
+        // Check if Gemini API key is configured
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({
+                success: false,
+                error: 'GEMINI_API_KEY not configured'
+            });
+        }
+
+        // Get Gemini 2.5 Flash model
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-pro",
+            model: "gemini-2.5-flash",
             generationConfig: {
                 temperature: 0.7,
-                topK: 1,
-                topP: 0.8,
+                topK: 40,
+                topP: 0.95,
                 maxOutputTokens: 8192,
             }
         });
 
         // Create the prompt for Gemini
         const designPrompt = `
-        You are a UI/UX designer. Create a JSON representation of a ${prompt} design.
+        You are a UI/UX designer. Create a detailed JSON representation of a ${prompt} design.
         
-        Return ONLY valid JSON with this EXACT structure:
+        Return ONLY valid JSON with this EXACT structure - no markdown, no explanations:
 
         {
           "design": {
@@ -162,116 +192,6 @@ app.post('/api/generate-design', async (req, res) => {
                   ]
                 }
               ]
-            },
-            {
-              "type": "frame",
-              "name": "Products Grid",
-              "x": 0,
-              "y": 680,
-              "width": 1920,
-              "height": 400,
-              "backgroundColor": "#ffffff",
-              "children": [
-                {
-                  "type": "rectangle",
-                  "name": "Product 1",
-                  "x": 200,
-                  "y": 720,
-                  "width": 250,
-                  "height": 300,
-                  "backgroundColor": "#e0e0e0",
-                  "cornerRadius": 8,
-                  "children": [
-                    {
-                      "type": "text",
-                      "name": "Product Name",
-                      "x": 50,
-                      "y": 200,
-                      "content": "Product 1",
-                      "fontSize": 18,
-                      "fontFamily": "Inter",
-                      "color": "#333333"
-                    },
-                    {
-                      "type": "text",
-                      "name": "Product Price",
-                      "x": 90,
-                      "y": 230,
-                      "content": "$99",
-                      "fontSize": 16,
-                      "fontFamily": "Inter",
-                      "color": "#007bff",
-                      "fontWeight": 600
-                    }
-                  ]
-                },
-                {
-                  "type": "rectangle",
-                  "name": "Product 2",
-                  "x": 500,
-                  "y": 720,
-                  "width": 250,
-                  "height": 300,
-                  "backgroundColor": "#e0e0e0",
-                  "cornerRadius": 8,
-                  "children": [
-                    {
-                      "type": "text",
-                      "name": "Product Name",
-                      "x": 50,
-                      "y": 200,
-                      "content": "Product 2",
-                      "fontSize": 18,
-                      "fontFamily": "Inter",
-                      "color": "#333333"
-                    },
-                    {
-                      "type": "text",
-                      "name": "Product Price",
-                      "x": 90,
-                      "y": 230,
-                      "content": "$149",
-                      "fontSize": 16,
-                      "fontFamily": "Inter",
-                      "color": "#007bff",
-                      "fontWeight": 600
-                    }
-                  ]
-                },
-                {
-                  "type": "rectangle",
-                  "name": "Product 3",
-                  "x": 800,
-                  "y": 720,
-                  "width": 250,
-                  "height": 300,
-                  "backgroundColor": "#e0e0e0",
-                  "cornerRadius": 8,
-                  "children": [
-                    {
-                      "type": "text",
-                      "name": "Product Name",
-                      "x": 50,
-                      "y": 200,
-                      "content": "Product 3",
-                      "fontSize": 18,
-                      "fontFamily": "Inter",
-                      "color": "#333333"
-                    },
-                    {
-                      "type": "text",
-                      "name": "Product Price",
-                      "x": 90,
-                      "y": 230,
-                      "content": "$199",
-                      "fontSize": 16,
-                      "fontFamily": "Inter",
-                      "color": "#007bff",
-                      "fontWeight": 600
-                    }
-                  ]
-                }
-              ]
             }
           ]
         }
@@ -280,10 +200,12 @@ app.post('/api/generate-design', async (req, res) => {
         1. Make the design appropriate for a ${prompt}
         2. Use modern UI/UX principles
         3. Include header, hero section, content sections, and footer
-        4. Use realistic spacing and sizing
+        4. Use realistic spacing and sizing (x, y, width, height)
         5. Use appropriate colors for the context
         6. Return ONLY the JSON, no other text
         `;
+
+        console.log('📤 Sending to Gemini 2.5 Flash API...');
 
         // Generate content
         const result = await model.generateContent(designPrompt);
@@ -296,27 +218,29 @@ app.post('/api/generate-design', async (req, res) => {
         // Parse JSON
         const designJson = JSON.parse(text);
         
-        console.log('✅ Design generated successfully');
+        console.log('✅ Design generated successfully with Gemini 2.5 Flash');
 
         res.json({
             success: true,
             prompt: prompt,
+            model: 'gemini-2.5-flash',
             design: designJson,
             timestamp: new Date().toISOString()
         });
 
     } catch (error) {
         console.error('❌ Gemini API Error:', error);
+        
         res.status(500).json({
             success: false,
             error: error.message,
-            message: 'Failed to generate design'
+            message: 'Failed to generate design with Gemini 2.5 Flash'
         });
     }
 });
 
 // ===========================================
-// PROCESS DATA FROM FIGMA (existing)
+// PROCESS DATA FROM FIGMA
 // ===========================================
 app.post('/api/process', (req, res) => {
     console.log('📥 Received from Figma:', req.body);
@@ -328,18 +252,8 @@ app.post('/api/process', (req, res) => {
     });
 });
 
-// Status endpoint
-app.get('/api/status', (req, res) => {
-    res.json({
-        status: 'online',
-        uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'development',
-        features: ['gemini-design-generation']
-    });
-});
-
 // ===========================================
-// 404 HANDLER - Catch all undefined routes
+// 404 HANDLER
 // ===========================================
 app.use('*', (req, res) => {
     res.status(404).json({
@@ -349,21 +263,24 @@ app.use('*', (req, res) => {
             'GET /': 'Health check',
             'GET /api/status': 'Server status',
             'POST /api/process': 'Process Figma data',
-            'POST /api/generate-design': 'Generate design with AI'
+            'POST /api/generate-design': 'Generate design with Gemini 2.5 Flash'
         }
     });
 });
 
 // ===========================================
-// START SERVER - Bind to 0.0.0.0 for Render
+// START SERVER
 // ===========================================
-app.listen(port, '0.0.0.0', () => {
-    console.log(`\n🚀 Backend running on port ${port}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🚀 Backend running on port ${PORT}`);
     console.log(`📍 URL: https://figma-backend-rahul.onrender.com`);
+    console.log(`🤖 Model: gemini-2.5-flash (confirmed working)`);
     console.log(`📡 Endpoints:`);
     console.log(`   GET  /`);
     console.log(`   GET  /api/status`);
     console.log(`   POST /api/process`);
     console.log(`   POST /api/generate-design`);
-    console.log(`✨ Gemini: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing API key'}\n`);
+    console.log(`✨ Gemini API: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing API key'}`);
+    console.log(`\n`);
 });
