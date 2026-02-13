@@ -343,4 +343,8 @@ app.listen(port, '0.0.0.0', () => {
     console.log(`\n🚀 Backend running on port ${port}`);
     console.log(`📍 Test: http://localhost:${port}`);
     console.log(`✨ Gemini Design Generation: POST /api/generate-design\n`);
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> (Add Gemini AI design generation)
