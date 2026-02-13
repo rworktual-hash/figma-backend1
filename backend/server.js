@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
 });
 
 // ===========================================
-// 🔥 NEW: GENERATE DESIGN FROM PROMPT
+// GENERATE DESIGN FROM PROMPT
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
     try {
@@ -338,13 +338,32 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// Bind to 0.0.0.0 for Render
+// ===========================================
+// 404 HANDLER - Catch all undefined routes
+// ===========================================
+app.use('*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found',
+        available: {
+            'GET /': 'Health check',
+            'GET /api/status': 'Server status',
+            'POST /api/process': 'Process Figma data',
+            'POST /api/generate-design': 'Generate design with AI'
+        }
+    });
+});
+
+// ===========================================
+// START SERVER - Bind to 0.0.0.0 for Render
+// ===========================================
 app.listen(port, '0.0.0.0', () => {
     console.log(`\n🚀 Backend running on port ${port}`);
-    console.log(`📍 Test: http://localhost:${port}`);
-    console.log(`✨ Gemini Design Generation: POST /api/generate-design\n`);
-<<<<<<< HEAD
+    console.log(`📍 URL: https://figma-backend-rahul.onrender.com`);
+    console.log(`📡 Endpoints:`);
+    console.log(`   GET  /`);
+    console.log(`   GET  /api/status`);
+    console.log(`   POST /api/process`);
+    console.log(`   POST /api/generate-design`);
+    console.log(`✨ Gemini: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing API key'}\n`);
 });
-=======
-});
->>>>>>> (Add Gemini AI design generation)
