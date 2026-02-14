@@ -25,11 +25,17 @@ const SYSTEM_PROMPT = `
 You are a world powerful Figma JSON generator. Create UI designs in Figma format.
 
 - If user asking to generate any kind of figma mean you want to provide advance level json
-- provide the valid images also
+- You want to provide the figma step by step in the below oreder
+    - If login page present mean first provide the login page valid json
+    - Home page json with all the essential elements
+    - Corelated pages want to build based on the home page elements
+    - etc......
+
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
 3. Valid element types: text, rectangle, button, input, circle, line, icon, group
+4. Always want to provide the advance level json.
 
 EXAMPLE STRUCTURE:
 {
@@ -123,7 +129,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // ===========================================
-// GENERATE DESIGN - WITH CORRECT MODEL NAMES
+// GENERATE DESIGN - WITH FASTER MODEL & LONGER TIMEOUT
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
     // Set longer timeout (90 seconds)
@@ -156,15 +162,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-1.5-flash';
+        let modelUsed = 'gemini-2.5-pro';
         let startTime = Date.now();
 
-        // TRY 1: Fast model first (gemini-1.5-flash) - CORRECT MODEL NAME
+        // TRY 1: Fast model first (1.5-flash) - takes 5-15 seconds
         try {
-            console.log('\n📤 Trying fast model: gemini-1.5-flash');
+            console.log('\n📤 Trying fast model: gemini-2.5-pro');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash",  // ✅ FIXED: Correct model name
+                model: "gemini-2.5-pro",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
@@ -186,14 +192,14 @@ app.post('/api/generate-design', async (req, res) => {
 
         } catch (fastError) {
             console.log('⚠️ Fast model failed:', fastError.message);
-            console.log('Trying 2.0 flash model...');
+            console.log('Trying 2.5 flash model...');
             
-            modelUsed = 'gemini-1.5-flash';
+            modelUsed = 'gemini-2.5-flash';
             
-            // TRY 2: Use gemini-1.5-flash - CORRECT MODEL NAME
+            // TRY 2: Slower but more capable model (2.5-flash) - takes 20-40 seconds
             try {
                 const slowModel = genAI.getGenerativeModel({ 
-                    model: "gemini-1.5-flash",  // ✅ FIXED: Correct model name
+                    model: "gemini-2.5-flash",
                     generationConfig: {
                         temperature: 0.7,
                         maxOutputTokens: 8192,
@@ -206,11 +212,11 @@ app.post('/api/generate-design', async (req, res) => {
                 const slowResponse = await slowResult.response;
                 let slowText = slowResponse.text();
                 
-                console.log(`📥 2.0 flash response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+                console.log(`📥 2.5 flash response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
                 console.log('Response length:', slowText.length);
                 
                 designJson = repairJSON(slowText);
-                console.log('✅ 2.0 flash model succeeded');
+                console.log('✅ 2.5 flash model succeeded');
 
             } catch (slowError) {
                 console.log('⚠️ Both models failed:', slowError.message);
