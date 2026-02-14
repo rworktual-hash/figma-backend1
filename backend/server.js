@@ -26,6 +26,8 @@ You are a Figma JSON generator. Create COMPLETE website designs in valid JSON fo
 
 OUTPUT ONLY RAW JSON - NO MARKDOWN, NO EXPLANATIONS, NO COMMENTS.
 
+CRITICAL: Start your response with { and end with } - NOTHING ELSE.
+
 STRICT JSON RULES:
 - All keys MUST be in double quotes
 - All string values MUST be in double quotes  
@@ -38,22 +40,23 @@ REQUIRED STRUCTURE:
   "frames": [
     {
       "type": "frame",
-      "name": "Page Name",
+      "name": "Tech Startup Landing Page",
       "width": 1440,
-      "height": 900,
+      "height": 1024,
       "backgroundColor": "#FFFFFF",
       "children": [
-        { "type": "frame", "name": "Navigation", "children": [...] },
-        { "type": "frame", "name": "Hero", "children": [...] },
-        { "type": "frame", "name": "Features", "children": [...] },
-        { "type": "frame", "name": "Footer", "children": [...] }
+        { "type": "frame", "name": "Navigation", ... },
+        { "type": "frame", "name": "Hero Section", ... },
+        { "type": "frame", "name": "Features Section", ... },
+        { "type": "frame", "name": "Footer", ... }
       ]
     }
   ]
 }
 
-ELEMENT TYPES: text, rectangle, button, frame, circle, line, input
-Return ONLY valid JSON. Start with { and end with }.
+ELEMENT TYPES: text, rectangle, button, frame, circle, line, input, image
+
+Return ONLY valid JSON starting with { and ending with }.
 `;
 
 // ===========================================
@@ -61,6 +64,8 @@ Return ONLY valid JSON. Start with { and end with }.
 // ===========================================
 function parseJSONResponse(text) {
     console.log('🔧 Attempting to parse JSON...');
+    console.log('📄 Raw response length:', text.length);
+    console.log('📄 Raw response preview:', text.substring(0, 150));
     
     // 1. Try direct parse first
     try {
@@ -70,7 +75,7 @@ function parseJSONResponse(text) {
             return result;
         }
     } catch (e) {
-        console.log('⚠️ Direct parse failed');
+        console.log('⚠️ Direct parse failed:', e.message);
     }
     
     // 2. Remove markdown code blocks
@@ -87,7 +92,7 @@ function parseJSONResponse(text) {
             return result;
         }
     } catch (e) {
-        console.log('⚠️ Comment-stripped parse failed');
+        console.log('⚠️ Comment-stripped parse failed:', e.message);
     }
     
     // 4. Fix common JSON errors
@@ -103,7 +108,7 @@ function parseJSONResponse(text) {
             return result;
         }
     } catch (e) {
-        console.log('⚠️ Common-fix parse failed');
+        console.log('⚠️ Common-fix parse failed:', e.message);
     }
     
     // 5. Extract JSON from anywhere in text
@@ -136,7 +141,7 @@ function parseJSONResponse(text) {
                 return result;
             }
         } catch (e) {
-            console.log('⚠️ Frames-extraction failed');
+            console.log('⚠️ Frames-extraction failed:', e.message);
         }
     }
     
@@ -448,6 +453,18 @@ app.get('/api/status', (req, res) => {
 });
 
 // ===========================================
+// TEST ENDPOINT - Returns a simple design
+// ===========================================
+app.get('/api/test-design', (req, res) => {
+    res.json({
+        success: true,
+        model: 'test-endpoint',
+        design: getFallbackDesign('Test Design'),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// ===========================================
 // GENERATE DESIGN ENDPOINT
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
@@ -588,16 +605,23 @@ app.post('/api/generate-design', async (req, res) => {
         const totalTime = ((Date.now() - startTime)/1000).toFixed(1);
         console.log('='.repeat(50));
         console.log(`✅ DONE (${totalTime}s) - Model: ${modelUsed}`);
+        console.log('📦 Frames count:', designJson.frames ? designJson.frames.length : 0);
+        console.log('📦 First frame name:', designJson.frames[0] ? designJson.frames[0].name : 'N/A');
+        console.log('📦 Response keys:', Object.keys(designJson));
         console.log('='.repeat(50));
 
-        res.json({
+        const response = {
             success: true,
             prompt: prompt,
             model: modelUsed,
             generationTime: `${totalTime}s`,
             design: designJson,
             timestamp: new Date().toISOString()
-        });
+        };
+
+        console.log('📤 Sending response:', JSON.stringify(response, null, 2).substring(0, 500) + '...');
+
+        res.json(response);
 
     } catch (error) {
         console.error('❌ ERROR:', error.message);
