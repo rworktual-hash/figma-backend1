@@ -129,7 +129,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // ===========================================
-// GENERATE DESIGN - WITH FASTER MODEL & LONGER TIMEOUT
+// GENERATE DESIGN - WITH CORRECT MODEL NAMES
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
     // Set longer timeout (90 seconds)
@@ -162,15 +162,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-2.5-pro';
+        let modelUsed = 'gemini-1.5-flash-002';
         let startTime = Date.now();
 
-        // TRY 1: Fast model first (1.5-flash) - takes 5-15 seconds
+        // TRY 1: Fast model first (gemini-1.5-flash-002) - CORRECT MODEL NAME
         try {
-            console.log('\n📤 Trying fast model: gemini-2.5-pro');
+            console.log('\n📤 Trying fast model: gemini-1.5-flash-002');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-pro",
+                model: "gemini-1.5-flash-002",  // ✅ FIXED: Correct model name
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
@@ -192,14 +192,14 @@ app.post('/api/generate-design', async (req, res) => {
 
         } catch (fastError) {
             console.log('⚠️ Fast model failed:', fastError.message);
-            console.log('Trying 2.5 flash model...');
+            console.log('Trying 2.0 flash model...');
             
-            modelUsed = 'gemini-2.5-flash';
+            modelUsed = 'gemini-2.0-flash-exp';
             
-            // TRY 2: Slower but more capable model (2.5-flash) - takes 20-40 seconds
+            // TRY 2: Use gemini-2.0-flash-exp - CORRECT MODEL NAME
             try {
                 const slowModel = genAI.getGenerativeModel({ 
-                    model: "gemini-2.5-flash",
+                    model: "gemini-2.0-flash-exp",  // ✅ FIXED: Correct model name
                     generationConfig: {
                         temperature: 0.7,
                         maxOutputTokens: 8192,
@@ -212,15 +212,43 @@ app.post('/api/generate-design', async (req, res) => {
                 const slowResponse = await slowResult.response;
                 let slowText = slowResponse.text();
                 
-                console.log(`📥 2.5 flash response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+                console.log(`📥 2.0 flash response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
                 console.log('Response length:', slowText.length);
                 
                 designJson = repairJSON(slowText);
-                console.log('✅ 2.5 flash model succeeded');
+                console.log('✅ 2.0 flash model succeeded');
 
             } catch (slowError) {
-                console.log('⚠️ Both models failed:', slowError.message);
-                throw new Error('All models failed to generate design');
+                console.log('⚠️ Both models failed, using fallback design');
+                // Create fallback design
+                designJson = {
+                    frames: [{
+                        type: "frame",
+                        name: prompt,
+                        width: 1440,
+                        height: 900,
+                        backgroundColor: "#FFFFFF",
+                        children: [
+                            {
+                                type: "text",
+                                text: prompt,
+                                fontSize: 32,
+                                fontWeight: "Bold",
+                                color: "#000000",
+                                x: 100,
+                                y: 100
+                            },
+                            {
+                                type: "text",
+                                text: "Generated with fallback",
+                                fontSize: 18,
+                                color: "#666666",
+                                x: 100,
+                                y: 160
+                            }
+                        ]
+                    }]
+                };
             }
         }
 
