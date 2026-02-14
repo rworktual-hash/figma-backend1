@@ -19,283 +19,122 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 
 // ===========================================
-// ENHANCED SYSTEM PROMPT FOR GEMINI 2.5 FLASH
+// UNIVERSAL SYSTEM PROMPT - Handles ALL website types
 // ===========================================
 const SYSTEM_PROMPT = `
-You are an expert UI/UX designer and Figma JSON generator. Create professional, production-ready designs with perfect spacing, typography, and visual hierarchy.
+You are an expert UI/UX designer and Figma JSON generator. Create COMPLETE, PROFESSIONAL website designs based on the user's request.
 
-DESIGN PHILOSOPHY:
-- Create modern, clean, and professional designs
-- Follow Material Design or modern web design principles
-- Use proper spacing (8px grid system recommended)
-- Ensure visual hierarchy with appropriate font sizes and colors
-- Make designs responsive-ready (use percentages where possible)
+WEBSITE ARCHITECTURE - ALL designs MUST include:
 
-JSON STRUCTURE RULES:
-1. ROOT must have a "frames" array containing all pages/screens
-2. Each frame represents a page/screen with:
-   - type: "frame" (required)
-   - name: Descriptive name (e.g., "Home Page", "Login Page")
-   - width: 1440 (desktop) or 375 (mobile)
-   - height: Auto-calculate based on content
-   - backgroundColor: Hex color (e.g., "#FFFFFF")
-   - children: Array of UI elements
+1. **NAVIGATION BAR** (top, 80px height)
+   - Logo/Brand name on left
+   - Navigation links (Home, About, Services/Products, Contact)
+   - Optional CTA button (Sign Up/Get Started)
 
-ELEMENT TYPES & PROPERTIES:
+2. **HERO SECTION** (full width, 500-600px height)
+   - Main headline (large, bold)
+   - Subheadline/description
+   - Primary CTA button
+   - Optional secondary button
+   - Hero image/illustration on right
 
-For TEXT elements:
+3. **STATS/FEATURES SECTION** (3-4 columns)
+   - Key metrics or features with icons
+   - Numbers or feature titles
+   - Brief descriptions
+
+4. **CONTENT SECTION 1** (based on website type)
+   - Title
+   - Grid of cards or content blocks
+
+5. **CONTENT SECTION 2** (different layout)
+   - Alternating image-content layout
+   - Call to action
+
+6. **TESTIMONIALS/SOCIAL PROOF** (optional but recommended)
+   - Quote cards with avatars
+
+7. **FOOTER** (bottom)
+   - Contact information
+   - Quick links
+   - Copyright
+   - Social media icons
+
+WEBSITE-SPECIFIC REQUIREMENTS:
+
+For **SCHOOL/EDUCATION** websites:
+- Colors: Professional blues (#2563EB), whites, light grays
+- Stats: Students enrolled, Teachers, Years established, Student-teacher ratio
+- Content: Academic programs (Elementary, Middle, High), Upcoming events, Campus photos
+- Call to actions: "Apply Now", "Take a Tour", "Request Information"
+
+For **GYM/FITNESS** websites:
+- Colors: Bold reds (#DC2626), oranges (#F59E0B), dark backgrounds (#111827)
+- Stats: Active members, Trainers, Classes per week, Success stories
+- Content: Class schedules, Trainer profiles, Membership plans
+- Call to actions: "Start Free Trial", "Join Now", "View Classes"
+
+For **RESTAURANT/CAFE** websites:
+- Colors: Warm browns (#B45309), ambers (#D97706), cream backgrounds (#FFFBEB)
+- Stats: Years serving, Daily customers, Menu items, Chef experience
+- Content: Menu categories, Special dishes, Reservation form, Location
+- Call to actions: "Reserve Table", "View Menu", "Order Online"
+
+For **PORTFOLIO/CREATIVE** websites:
+- Colors: Bold accent (#EC4899) with dark backgrounds (#111827) or minimal whites
+- Stats: Projects completed, Clients, Years experience, Awards
+- Content: Project grid, Skills section, About the artist
+- Call to actions: "View Work", "Hire Me", "Get in Touch"
+
+For **ECOMMERCE/STORE** websites:
+- Colors: Trustworthy blues (#3B82F6) with clean whites (#FFFFFF)
+- Stats: Products, Happy customers, Brands, Shipping countries
+- Content: Product categories, Featured products, Special offers
+- Call to actions: "Shop Now", "Add to Cart", "View Sale"
+
+For **CORPORATE/BUSINESS** websites:
+- Colors: Professional blues (#2563EB) or purples (#7C3AED) with light backgrounds
+- Stats: Clients, Projects, Team members, Years in business
+- Content: Services, Case studies, Team profiles
+- Call to actions: "Get a Quote", "Contact Sales", "Learn More"
+
+For **BLOG/MAGAZINE** websites:
+- Colors: Clean whites with readable dark text (#1F2937)
+- Stats: Articles, Readers, Authors, Topics
+- Content: Featured posts, Categories, Recent articles
+- Call to actions: "Read More", "Subscribe", "Search"
+
+For **SAAS/TECH** websites:
+- Colors: Modern gradients, purples, blues with clean UI
+- Stats: Users, Features, Integrations, Speed metrics
+- Content: Feature grid, Pricing tiers, Integration partners
+- Call to actions: "Start Free Trial", "See Demo", "View Pricing"
+
+DESIGN GUIDELINES:
+- Use 8px grid system (spacing in multiples of 8)
+- Desktop width: 1440px, height auto (calculate based on content)
+- Consistent padding (40px on sides)
+- Font sizes: 48/32/24/20/18/16/14 px
+- Border radius: 8px for buttons, 12px for cards
+- All colors in hex format (e.g., "#2563EB")
+- All elements must have x, y, width, height coordinates
+- Text elements need fontSize, fontWeight, color
+
+JSON STRUCTURE:
 {
-  "type": "text",
-  "name": "Descriptive name",
-  "text": "Content here",
-  "fontSize": 16, // 12,14,16,18,20,24,32,48,64
-  "fontWeight": "Regular" | "Medium" | "SemiBold" | "Bold",
-  "fontFamily": "Inter" | "SF Pro" | "Roboto",
-  "color": "#000000",
-  "textAlign": "LEFT" | "CENTER" | "RIGHT",
-  "x": number,
-  "y": number,
-  "width": number, // optional
-  "height": number, // optional
-  "opacity": 1, // 0-1
-  "letterSpacing": 0, // optional
-  "lineHeight": 1.5 // optional
-}
-
-For BUTTON elements:
-{
-  "type": "button",
-  "name": "Button name",
-  "text": "Click Me",
-  "width": 120,
-  "height": 48,
-  "x": number,
-  "y": number,
-  "backgroundColor": "#007AFF",
-  "cornerRadius": 8, // 4,8,12,16,24
-  "textColor": "#FFFFFF",
-  "fontSize": 16,
-  "fontWeight": "Medium",
-  "borderColor": "#007AFF", // optional
-  "borderWidth": 0, // optional
-  "shadow": { // optional
-    "color": "#00000020",
-    "offsetX": 0,
-    "offsetY": 4,
-    "blur": 8
-  }
-}
-
-For INPUT elements:
-{
-  "type": "input",
-  "name": "Input field",
-  "placeholder": "Enter text...",
-  "width": 300,
-  "height": 48,
-  "x": number,
-  "y": number,
-  "backgroundColor": "#FFFFFF",
-  "borderColor": "#E5E7EB",
-  "borderWidth": 1,
-  "cornerRadius": 8,
-  "padding": 12,
-  "fontSize": 16
-}
-
-For CARD/RECTANGLE elements:
-{
-  "type": "rectangle",
-  "name": "Card name",
-  "width": 300,
-  "height": 400,
-  "x": number,
-  "y": number,
-  "backgroundColor": "#FFFFFF",
-  "cornerRadius": 12,
-  "borderColor": "#E5E7EB", // optional
-  "borderWidth": 1, // optional
-  "shadow": { // optional
-    "color": "#00000010",
-    "offsetX": 0,
-    "offsetY": 2,
-    "blur": 8
-  },
-  "children": [] // nested elements
-}
-
-For IMAGE placeholders:
-{
-  "type": "rectangle",
-  "name": "Image placeholder",
-  "width": 300,
-  "height": 200,
-  "x": number,
-  "y": number,
-  "backgroundColor": "#F3F4F6",
-  "cornerRadius": 8,
-  "children": [
+  "frames": [
     {
-      "type": "icon",
-      "character": "🖼️",
-      "fontSize": 48,
-      "color": "#9CA3AF",
-      "x": 120,
-      "y": 70
+      "type": "frame",
+      "name": "Website Name - Page Name",
+      "width": 1440,
+      "height": 1400,
+      "backgroundColor": "#FFFFFF",
+      "children": [] // All sections go here
     }
   ]
 }
 
-For ICONS:
-{
-  "type": "icon",
-  "name": "Icon name",
-  "character": "🔍", // emoji or icon character
-  "fontSize": 24,
-  "color": "#000000",
-  "x": number,
-  "y": number
-}
-
-For NAVIGATION:
-{
-  "type": "frame",
-  "name": "Navigation Bar",
-  "x": 0,
-  "y": 0,
-  "width": 1440,
-  "height": 80,
-  "backgroundColor": "#FFFFFF",
-  "borderColor": "#E5E7EB",
-  "borderWidth": 0,
-  "borderBottom": 1,
-  "children": [
-    {
-      "type": "text",
-      "text": "Logo",
-      "fontSize": 24,
-      "fontWeight": "Bold",
-      "color": "#000000",
-      "x": 40,
-      "y": 24
-    },
-    {
-      "type": "text",
-      "text": "Home",
-      "fontSize": 16,
-      "color": "#000000",
-      "x": 200,
-      "y": 28
-    },
-    {
-      "type": "text",
-      "text": "About",
-      "fontSize": 16,
-      "color": "#000000",
-      "x": 280,
-      "y": 28
-    },
-    {
-      "type": "button",
-      "text": "Sign Up",
-      "width": 100,
-      "height": 40,
-      "backgroundColor": "#007AFF",
-      "cornerRadius": 8,
-      "textColor": "#FFFFFF",
-      "x": 1200,
-      "y": 20
-    }
-  ]
-}
-
-For FOOTER:
-{
-  "type": "frame",
-  "name": "Footer",
-  "x": 0,
-  "y": 1200,
-  "width": 1440,
-  "height": 200,
-  "backgroundColor": "#1F2937",
-  "children": [
-    {
-      "type": "text",
-      "text": "© 2026 Company Name",
-      "fontSize": 14,
-      "color": "#9CA3AF",
-      "x": 100,
-      "y": 160
-    }
-  ]
-}
-
-COLOR PALETTES (use appropriate colors for context):
-
-Ecommerce:
-- Primary: "#3B82F6" (blue)
-- Secondary: "#10B981" (green)
-- Background: "#FFFFFF"
-- Text: "#1F2937"
-- Accent: "#F59E0B"
-
-Corporate:
-- Primary: "#2563EB" (navy blue)
-- Secondary: "#7C3AED" (purple)
-- Background: "#F9FAFB"
-- Text: "#1F2937"
-- Accent: "#DC2626"
-
-Portfolio:
-- Primary: "#EC4899" (pink)
-- Secondary: "#8B5CF6" (purple)
-- Background: "#111827" (dark)
-- Text: "#F9FAFB"
-- Accent: "#10B981"
-
-Restaurant:
-- Primary: "#B45309" (brown)
-- Secondary: "#D97706" (amber)
-- Background: "#FFFBEB"
-- Text: "#78350F"
-- Accent: "#059669"
-
-Gym/Fitness:
-- Primary: "#DC2626" (red)
-- Secondary: "#F59E0B" (orange)
-- Background: "#111827" (dark)
-- Text: "#F3F4F6"
-- Accent: "#10B981"
-
-Education:
-- Primary: "#059669" (green)
-- Secondary: "#3B82F6" (blue)
-- Background: "#F3F4F6"
-- Text: "#1F2937"
-- Accent: "#F59E0B"
-
-LAYOUT GUIDELINES:
-1. Desktop width: 1440px
-2. Mobile width: 375px
-3. Use 8px grid system (spacing multiples of 8)
-4. Content padding: 40px on sides
-5. Section spacing: 80px between major sections
-6. Card spacing: 24px between cards
-7. Button height: 48px (desktop), 56px (mobile)
-8. Input height: 48px
-9. Font sizes: 12,14,16,18,20,24,32,48,64
-10. Border radius: 4,8,12,16,24
-
-SECTION STRUCTURE for websites:
-1. Navigation Bar (80px height)
-2. Hero Section (600px height)
-3. Features/Grid Section (400px)
-4. Content Section (400px)
-5. Testimonials (400px)
-6. Pricing/Cards (400px)
-7. Footer (200px)
-
-Always return valid JSON with frames array. Include complete designs with all necessary elements.
+Return ONLY valid JSON, no explanations or markdown.
 `;
 
 // ===========================================
@@ -311,15 +150,20 @@ function repairJSON(str) {
         str = str.replace(/,(\s*[}\]])/g, '$1');
         str = str.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
         str = str.replace(/}(\s*){/g, '},$1{');
+        str = str.replace(/'/g, '"');
         
         try {
             return JSON.parse(str);
         } catch (e2) {
             const jsonMatch = str.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (e3) {
+                    return null;
+                }
             }
-            throw e2;
+            return null;
         }
     }
 }
@@ -353,134 +197,6 @@ app.get('/api/status', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
-
-// ===========================================
-// CREATE FALLBACK DESIGN
-// ===========================================
-function createFallbackDesign(prompt) {
-    const prompt_lower = prompt.toLowerCase();
-    
-    // Determine colors based on prompt
-    let primaryColor = "#6366F1";
-    let secondaryColor = "#8B5CF6";
-    let bgColor = "#FFFFFF";
-    let textColor = "#1F2937";
-    
-    if (prompt_lower.includes('gym') || prompt_lower.includes('fitness')) {
-        primaryColor = "#DC2626";
-        secondaryColor = "#F59E0B";
-        bgColor = "#111827";
-        textColor = "#F3F4F6";
-    } else if (prompt_lower.includes('ecom') || prompt_lower.includes('shop')) {
-        primaryColor = "#3B82F6";
-        secondaryColor = "#10B981";
-    } else if (prompt_lower.includes('restaurant')) {
-        primaryColor = "#B45309";
-        secondaryColor = "#D97706";
-        bgColor = "#FFFBEB";
-        textColor = "#78350F";
-    }
-    
-    return {
-        frames: [{
-            type: "frame",
-            name: prompt,
-            width: 1440,
-            height: 900,
-            backgroundColor: bgColor,
-            children: [
-                // Header
-                {
-                    type: "frame",
-                    name: "Header",
-                    x: 0,
-                    y: 0,
-                    width: 1440,
-                    height: 80,
-                    backgroundColor: primaryColor,
-                    children: [
-                        {
-                            type: "text",
-                            text: "Brand",
-                            fontSize: 24,
-                            fontWeight: "Bold",
-                            color: "#FFFFFF",
-                            x: 40,
-                            y: 25
-                        },
-                        {
-                            type: "text",
-                            text: "Home",
-                            fontSize: 16,
-                            color: "#FFFFFF",
-                            x: 200,
-                            y: 30
-                        },
-                        {
-                            type: "text",
-                            text: "About",
-                            fontSize: 16,
-                            color: "#FFFFFF",
-                            x: 280,
-                            y: 30
-                        },
-                        {
-                            type: "button",
-                            text: "Get Started",
-                            width: 120,
-                            height: 40,
-                            backgroundColor: "#FFFFFF",
-                            cornerRadius: 8,
-                            textColor: primaryColor,
-                            x: 1200,
-                            y: 20
-                        }
-                    ]
-                },
-                // Hero
-                {
-                    type: "frame",
-                    name: "Hero",
-                    x: 0,
-                    y: 80,
-                    width: 1440,
-                    height: 400,
-                    backgroundColor: bgColor,
-                    children: [
-                        {
-                            type: "text",
-                            text: prompt,
-                            fontSize: 48,
-                            fontWeight: "Bold",
-                            color: primaryColor,
-                            x: 100,
-                            y: 120
-                        },
-                        {
-                            type: "text",
-                            text: "Professional design generated by AI",
-                            fontSize: 20,
-                            color: textColor,
-                            x: 100,
-                            y: 190
-                        },
-                        {
-                            type: "button",
-                            text: "Learn More",
-                            width: 160,
-                            height: 48,
-                            backgroundColor: primaryColor,
-                            cornerRadius: 8,
-                            textColor: "#FFFFFF",
-                            x: 100,
-                            y: 260
-                        }
-                    ]
-                }
-            ]
-        }]
-    };
-}
 
 // ===========================================
 // GENERATE DESIGN - WITH GEMINI 2.5 FLASH
@@ -529,7 +245,7 @@ app.post('/api/generate-design', async (req, res) => {
                 }
             });
 
-            const fullPrompt = `${SYSTEM_PROMPT}\n\nNow create a complete, professional ${prompt} design. Include all necessary sections: navigation, hero, features, content, and footer. Use appropriate colors and spacing. Return ONLY valid JSON with frames array.`;
+            const fullPrompt = `${SYSTEM_PROMPT}\n\nNow create a complete, professional ${prompt}. Follow ALL requirements above for this specific type of website. Include EVERY section mentioned (navigation, hero, stats, content sections, footer). Make it detailed, realistic, and production-ready with proper colors, spacing, and content. Return ONLY valid JSON with frames array.`;
             
             const result = await model.generateContent(fullPrompt);
             const response = await result.response;
@@ -539,20 +255,84 @@ app.post('/api/generate-design', async (req, res) => {
             console.log('Response length:', text.length);
             
             designJson = repairJSON(text);
-            console.log('✅ Gemini 2.5 Flash succeeded');
+            
+            if (designJson && designJson.frames) {
+                console.log('✅ Gemini 2.5 Flash succeeded');
+            } else {
+                console.log('⚠️ Invalid JSON structure, retrying once...');
+                
+                // One more try with simpler prompt
+                const retryPrompt = `Create a ${prompt}. Return valid JSON with frames array. Include navigation, hero, features, and footer.`;
+                const retryResult = await model.generateContent(retryPrompt);
+                const retryResponse = await retryResult.response;
+                text = retryResponse.text();
+                designJson = repairJSON(text);
+                
+                if (!designJson || !designJson.frames) {
+                    throw new Error('Failed to generate valid JSON');
+                }
+            }
 
         } catch (error) {
             console.log('⚠️ Gemini 2.5 Flash failed:', error.message);
-            console.log('📦 Using fallback design');
-            designJson = createFallbackDesign(prompt);
+            console.log('Using minimal fallback');
+            
+            // Minimal fallback - just shows the prompt
+            designJson = {
+                frames: [{
+                    type: "frame",
+                    name: prompt,
+                    width: 1440,
+                    height: 600,
+                    backgroundColor: "#FFFFFF",
+                    children: [
+                        {
+                            type: "text",
+                            text: prompt,
+                            fontSize: 32,
+                            fontWeight: "Bold",
+                            color: "#000000",
+                            x: 100,
+                            y: 100
+                        },
+                        {
+                            type: "text",
+                            text: "Design generated with AI",
+                            fontSize: 18,
+                            color: "#666666",
+                            x: 100,
+                            y: 160
+                        }
+                    ]
+                }]
+            };
         }
 
-        // Validate structure
+        // Validate and ensure correct structure
         if (!designJson || !designJson.frames) {
             if (designJson && designJson.type === 'frame') {
                 designJson = { frames: [designJson] };
             } else {
-                designJson = createFallbackDesign(prompt);
+                designJson = {
+                    frames: [{
+                        type: "frame",
+                        name: prompt,
+                        width: 1440,
+                        height: 600,
+                        backgroundColor: "#FFFFFF",
+                        children: [
+                            {
+                                type: "text",
+                                text: prompt,
+                                fontSize: 32,
+                                fontWeight: "Bold",
+                                color: "#000000",
+                                x: 100,
+                                y: 100
+                            }
+                        ]
+                    }]
+                };
             }
         }
 
@@ -580,8 +360,27 @@ app.post('/api/generate-design', async (req, res) => {
         res.json({
             success: true,
             prompt: req.body.prompt || 'design',
-            model: 'emergency-fallback',
-            design: createFallbackDesign(req.body.prompt || 'website'),
+            model: 'minimal-fallback',
+            design: {
+                frames: [{
+                    type: "frame",
+                    name: req.body.prompt || 'Design',
+                    width: 1440,
+                    height: 400,
+                    backgroundColor: "#FFFFFF",
+                    children: [
+                        {
+                            type: "text",
+                            text: req.body.prompt || 'Design',
+                            fontSize: 32,
+                            fontWeight: "Bold",
+                            color: "#000000",
+                            x: 100,
+                            y: 100
+                        }
+                    ]
+                }]
+            },
             timestamp: new Date().toISOString()
         });
     }
