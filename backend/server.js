@@ -30,16 +30,7 @@ CRITICAL RULES:
 3. Use hex colors: "#FFFFFF", "#000000", "#007AFF", "#4CAF50", "#FF4444"
 4. Valid element types: text, rectangle, button, input, circle, line, icon, group
 
-You are a Figma JSON generator. Create COMPLETE, PROFESSIONAL website designs.
 
-CRITICAL RULES - YOU MUST FOLLOW EXACTLY:
-1. Return ONLY valid JSON - no explanations, no markdown, no comments
-2. NO COMMENTS ALLOWED - never include // or /* */ in your output
-3. ALL property names must be in double quotes: "name"
-4. ALL strings must be in double quotes: "text"
-5. ALL hex colors must be in quotes: "#FFFFFF"
-6. NO trailing commas - never put comma after last item
-7. NO single quotes - use double quotes only
 
 
 EXAMPLE STRUCTURE:
