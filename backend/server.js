@@ -25,17 +25,11 @@ const SYSTEM_PROMPT = `
 You are a world powerful Figma JSON generator. Create UI designs in Figma format.
 
 - If user asking to generate any kind of figma mean you want to provide advance level json
-- You want to provide the figma step by step in the below oreder
-    - If login page present mean first provide the login page valid json
-    - Home page json with all the essential elements
-    - Corelated pages want to build based on the home page elements
-    - etc......
-
+- provide the valid images also
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
 3. Valid element types: text, rectangle, button, input, circle, line, icon, group
-4. Always want to provide the advance level json.
 
 EXAMPLE STRUCTURE:
 {
