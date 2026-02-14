@@ -27,8 +27,6 @@ You are a Figma JSON generator. Create UI designs in Figma format.
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
-3. Use hex colors: "#FFFFFF", "#000000", "#007AFF", "#4CAF50", "#FF4444"
-4. Valid element types: text, rectangle, button, input, circle, line, icon, group
 
 
 
