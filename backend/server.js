@@ -24,13 +24,12 @@ app.use(express.json({ limit: '50mb' }));
 const SYSTEM_PROMPT = `
 You are a world powerful Figma JSON generator. Create UI designs in Figma format.
 
-- If user asking to generate any kind of figma mean you want to provide advance level json
+- If user asking to generate any kind of figma mean you want to provide the valid json.
 
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
 3. Valid element types: text, rectangle, button, input, circle, line, icon, group
-4. Always want to provide the advance level json.
 
 EXAMPLE STRUCTURE:
 {
@@ -157,15 +156,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-2.5-flash';
+        let modelUsed = 'gemini-2.5-pro';
         let startTime = Date.now();
 
         // TRY 1: Fast model first (1.5-flash) - takes 5-15 seconds
         try {
-            console.log('\n📤 Trying fast model: gemini-2.5-flash');
+            console.log('\n📤 Trying fast model: gemini-2.5-pro');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash",
+                model: "gemini-2.5-pro",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
