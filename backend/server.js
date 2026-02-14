@@ -162,15 +162,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-1.5-flash-002';
+        let modelUsed = 'gemini-2.0-flash-exp-002';
         let startTime = Date.now();
 
-        // TRY 1: Fast model first (gemini-1.5-flash-002) - CORRECT MODEL NAME
+        // TRY 1: Fast model first (gemini-2.0-flash-exp-002) - CORRECT MODEL NAME
         try {
-            console.log('\n📤 Trying fast model: gemini-1.5-flash-002');
+            console.log('\n📤 Trying fast model: gemini-2.0-flash-exp-002');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash-002",  // ✅ FIXED: Correct model name
+                model: "gemini-2.0-flash-exp-002",  // ✅ FIXED: Correct model name
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
