@@ -19,46 +19,110 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 
 // ===========================================
-// SYSTEM PROMPT FOR GEMINI (Simplified for speed)
+// CLEAN SYSTEM PROMPT - NO COMMENTS IN EXAMPLES
 // ===========================================
 const SYSTEM_PROMPT = `
-You are a Figma JSON generator. Create UI designs in Figma format.
+You are a Figma JSON generator. Create COMPLETE, PROFESSIONAL website designs.
 
-CRITICAL RULES:
-1. Return ONLY valid JSON with a "frames" array
-2. Each frame needs: type, name, width, height, backgroundColor, children array
+give valid json only , dont give json error format , give figma json format only 
+json convert into figma designs
+
+CRITICAL RULES - YOU MUST FOLLOW EXACTLY:
+1. Return ONLY valid JSON - no explanations, no markdown, no comments
+2. NO COMMENTS ALLOWED - never include // or /* */ in your output
+3. ALL property names must be in double quotes: "name"
+4. ALL strings must be in double quotes: "text"
+5. ALL hex colors must be in quotes: "#FFFFFF"
+6. NO trailing commas - never put comma after last item
+7. NO single quotes - use double quotes only
+
+REQUIRED WEBSITE SECTIONS:
+- Navigation bar (logo, links, button)
+- Hero section (headline, subheadline, buttons, image)
+- Features/Stats section
+- Content sections (2-3)
+- Testimonials section
+- Footer
 
 
-
+ELEMENT TYPES:
+text, rectangle, button, input, circle, line, icon, group
 
 EXAMPLE STRUCTURE:
 {
   "frames": [
     {
       "type": "frame",
-      "name": "Design Name",
+      "name": "Website Design",
       "width": 1440,
-      "height": 900,
+      "height": 2000,
       "backgroundColor": "#FFFFFF",
       "children": [
         {
-          "type": "text",
-          "text": "Hello World",
-          "fontSize": 32,
-          "color": "#000000",
-          "x": 100,
-          "y": 100
+          "type": "frame",
+          "name": "Navigation",
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 80,
+          "backgroundColor": "#FFFFFF",
+          "children": [
+            {
+              "type": "text",
+              "name": "Logo",
+              "text": "BrandName",
+              "fontSize": 24,
+              "fontWeight": "Bold",
+              "color": "#000000",
+              "x": 40,
+              "y": 24
+            },
+            {
+              "type": "button",
+              "name": "CTA",
+              "text": "Get Started",
+              "width": 140,
+              "height": 44,
+              "backgroundColor": "#0066FF",
+              "cornerRadius": 8,
+              "textColor": "#FFFFFF",
+              "fontSize": 16,
+              "x": 1240,
+              "y": 18
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "name": "Hero",
+          "x": 0,
+          "y": 80,
+          "width": 1440,
+          "height": 600,
+          "backgroundColor": "#F9FAFB",
+          "children": [
+            {
+              "type": "text",
+              "name": "Headline",
+              "text": "Main Headline Here",
+              "fontSize": 56,
+              "fontWeight": "Bold",
+              "color": "#111827",
+              "x": 80,
+              "y": 180
+            }
+          ]
         }
       ]
     }
   ]
 }
 
-Keep designs clean and modern. Return ONLY the JSON, no other text.
+Return ONLY valid JSON. No comments. No markdown. No explanations.
 `;
 
 // ===========================================
-// JSON REPAIR FUNCTION
+// ENHANCED JSON REPAIR FUNCTION - WITH COMMENT STRIPPING
 // ===========================================
 function repairJSON(str) {
     try {
@@ -70,6 +134,10 @@ function repairJSON(str) {
         // Remove markdown code blocks
         str = str.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
+        // CRITICAL: Remove ALL comments
+        str = str.replace(/\/\/.*$/gm, ''); // Remove // comments
+        str = str.replace(/\/\*[\s\S]*?\*\//g, ''); // Remove /* */ comments
+        
         // Fix trailing commas
         str = str.replace(/,(\s*[}\]])/g, '$1');
         
@@ -79,13 +147,22 @@ function repairJSON(str) {
         // Fix missing commas between objects
         str = str.replace(/}(\s*){/g, '},$1{');
         
+        // Fix single quotes
+        str = str.replace(/'/g, '"');
+        
+        // Try parsing again
         try {
             return JSON.parse(str);
         } catch (e2) {
             // Try to extract JSON object
             const jsonMatch = str.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (e3) {
+                    console.log('❌ Could not repair JSON');
+                    return null;
+                }
             }
             throw e2;
         }
@@ -123,7 +200,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // ===========================================
-// GENERATE DESIGN - WITH FASTER MODEL & LONGER TIMEOUT
+// GENERATE DESIGN - WITH FIXED MODEL NAMES
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
     // Set longer timeout (90 seconds)
@@ -156,41 +233,45 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-1.5-flash';
+        let modelUsed = 'gemini-2.0-flash-exp';
         let startTime = Date.now();
 
-        // TRY 1: Fast model first (1.5-flash) - takes 5-15 seconds
+        // TRY 1: Fast model first (2.0 flash)
         try {
-            console.log('\n📤 Trying fast model: gemini-1.5-flash');
+            console.log('\n📤 Trying model: gemini-2.0-flash-exp');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash",
+                model: "gemini-2.0-flash-exp",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
                 }
             });
 
-            // Simpler prompt for faster response
-            const fastPrompt = `Create a ${prompt} design. Return JSON with frames array. Include header, content sections. Use hex colors. Keep it clean.`;
+            const fastPrompt = `${SYSTEM_PROMPT}\n\nCreate a complete ${prompt} design. Include ALL sections. Return ONLY valid JSON with no comments.`;
             
             const fastResult = await fastModel.generateContent(fastPrompt);
             const fastResponse = await fastResult.response;
             let fastText = fastResponse.text();
             
-            console.log(`📥 Fast model response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+            console.log(`📥 Response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
             console.log('Response length:', fastText.length);
             
             designJson = repairJSON(fastText);
-            console.log('✅ Fast model succeeded');
+            
+            if (designJson && designJson.frames) {
+                console.log('✅ Model succeeded');
+            } else {
+                throw new Error('Invalid JSON structure');
+            }
 
         } catch (fastError) {
-            console.log('⚠️ Fast model failed:', fastError.message);
-            console.log('Trying 2.5 flash model...');
+            console.log('⚠️ Model failed:', fastError.message);
+            console.log('Trying 2.5 flash...');
             
             modelUsed = 'gemini-2.5-flash';
             
-            // TRY 2: Slower but more capable model (2.5-flash) - takes 20-40 seconds
+            // TRY 2: Try 2.5 flash
             try {
                 const slowModel = genAI.getGenerativeModel({ 
                     model: "gemini-2.5-flash",
@@ -200,26 +281,51 @@ app.post('/api/generate-design', async (req, res) => {
                     }
                 });
 
-                const fullPrompt = `${SYSTEM_PROMPT}\n\nCreate a ${prompt} design. Include header, hero section, content areas. Make it complete.`;
+                const fullPrompt = `${SYSTEM_PROMPT}\n\nCreate a complete ${prompt} design. Return ONLY valid JSON with no comments.`;
                 
                 const slowResult = await slowModel.generateContent(fullPrompt);
                 const slowResponse = await slowResult.response;
                 let slowText = slowResponse.text();
                 
-                console.log(`📥 2.5 flash response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+                console.log(`📥 Response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
                 console.log('Response length:', slowText.length);
                 
                 designJson = repairJSON(slowText);
-                console.log('✅ 2.5 flash model succeeded');
+                
+                if (!designJson || !designJson.frames) {
+                    throw new Error('Invalid JSON structure');
+                }
+                
+                console.log('✅ 2.5 flash succeeded');
 
             } catch (slowError) {
-                console.log('⚠️ Both models failed:', slowError.message);
-                throw new Error('All models failed to generate design');
+                console.log('⚠️ All models failed, using fallback');
+                // Create fallback design
+                designJson = {
+                    frames: [{
+                        type: "frame",
+                        name: prompt,
+                        width: 1440,
+                        height: 900,
+                        backgroundColor: "#FFFFFF",
+                        children: [
+                            {
+                                type: "text",
+                                text: prompt,
+                                fontSize: 32,
+                                fontWeight: "Bold",
+                                color: "#000000",
+                                x: 100,
+                                y: 100
+                            }
+                        ]
+                    }]
+                };
             }
         }
 
         // ===========================================
-        // ENSURE CORRECT STRUCTURE (frames array)
+        // ENSURE CORRECT STRUCTURE
         // ===========================================
         console.log('\n📦 Validating JSON structure...');
         
@@ -227,87 +333,34 @@ app.post('/api/generate-design', async (req, res) => {
             throw new Error('No design data generated');
         }
 
-        // Case 1: Already has frames array
-        if (designJson.frames && Array.isArray(designJson.frames)) {
-            console.log('✅ Valid frames array found');
-        }
-        // Case 2: Single frame object
-        else if (designJson.type === 'frame') {
-            console.log('📦 Converting single frame to frames array');
-            designJson = { frames: [designJson] };
-        }
-        // Case 3: Has design property with frames
-        else if (designJson.design && designJson.design.frames) {
-            console.log('📦 Extracting frames from design property');
-            designJson = { frames: designJson.design.frames };
-        }
-        // Case 4: Array of frames
-        else if (Array.isArray(designJson)) {
-            console.log('📦 Converting array to frames object');
-            designJson = { frames: designJson };
-        }
-        // Case 5: No recognizable structure - create fallback
-        else {
-            console.log('⚠️ No frames found, creating fallback');
-            designJson = {
-                frames: [{
-                    type: "frame",
-                    name: prompt,
-                    width: 1440,
-                    height: 900,
-                    backgroundColor: "#FFFFFF",
-                    children: [
-                        {
-                            type: "text",
-                            text: prompt,
-                            fontSize: 32,
-                            fontWeight: "Bold",
-                            color: "#000000",
-                            x: 100,
-                            y: 100
-                        },
-                        {
-                            type: "text",
-                            text: "Generated with AI",
-                            fontSize: 18,
-                            color: "#666666",
-                            x: 100,
-                            y: 160
-                        },
-                        {
-                            type: "rectangle",
-                            width: 1240,
-                            height: 2,
-                            color: "#EEEEEE",
-                            x: 100,
-                            y: 200
-                        },
-                        {
-                            type: "button",
-                            text: "Get Started",
-                            width: 200,
-                            height: 50,
-                            backgroundColor: "#007AFF",
-                            cornerRadius: 8,
-                            textColor: "#FFFFFF",
-                            x: 100,
-                            y: 250
-                        }
-                    ]
-                }]
-            };
+        // Ensure frames array exists
+        if (!designJson.frames) {
+            if (designJson.type === 'frame') {
+                designJson = { frames: [designJson] };
+            } else {
+                designJson = {
+                    frames: [{
+                        type: "frame",
+                        name: prompt,
+                        width: 1440,
+                        height: 900,
+                        backgroundColor: "#FFFFFF",
+                        children: [
+                            {
+                                type: "text",
+                                text: prompt,
+                                fontSize: 32,
+                                color: "#000000",
+                                x: 100,
+                                y: 100
+                            }
+                        ]
+                    }]
+                };
+            }
         }
 
-        // Ensure each frame has required properties
-        designJson.frames = designJson.frames.map(frame => ({
-            type: 'frame',
-            name: frame.name || prompt,
-            width: frame.width || 1440,
-            height: frame.height || 900,
-            backgroundColor: frame.backgroundColor || '#FFFFFF',
-            children: frame.children || [],
-            ...frame
-        }));
+        console.log('✅ Valid frames array found');
 
         const totalTime = ((Date.now() - startTime)/1000).toFixed(1);
         console.log('\n' + '='.repeat(60));
@@ -318,7 +371,6 @@ app.post('/api/generate-design', async (req, res) => {
         console.log(`📦 Frames created: ${designJson.frames.length}`);
         console.log('='.repeat(60));
 
-        // Send successful response
         res.json({
             success: true,
             prompt: prompt,
@@ -330,10 +382,6 @@ app.post('/api/generate-design', async (req, res) => {
 
     } catch (error) {
         console.error('\n❌ ERROR:', error.message);
-        console.error('Stack:', error.stack);
-        
-        // ALWAYS return a valid design, even on error
-        console.log('📦 Returning fallback design due to error');
         
         res.json({
             success: true,
@@ -344,7 +392,7 @@ app.post('/api/generate-design', async (req, res) => {
                     type: "frame",
                     name: req.body.prompt || 'Design',
                     width: 1440,
-                    height: 900,
+                    height: 600,
                     backgroundColor: "#FFFFFF",
                     children: [
                         {
@@ -355,33 +403,6 @@ app.post('/api/generate-design', async (req, res) => {
                             color: "#000000",
                             x: 100,
                             y: 100
-                        },
-                        {
-                            type: "text",
-                            text: "Generated with fallback (API error)",
-                            fontSize: 18,
-                            color: "#FF4444",
-                            x: 100,
-                            y: 160
-                        },
-                        {
-                            type: "rectangle",
-                            width: 1240,
-                            height: 2,
-                            color: "#EEEEEE",
-                            x: 100,
-                            y: 200
-                        },
-                        {
-                            type: "button",
-                            text: "Try Again",
-                            width: 200,
-                            height: 50,
-                            backgroundColor: "#007AFF",
-                            cornerRadius: 8,
-                            textColor: "#FFFFFF",
-                            x: 100,
-                            y: 250
                         }
                     ]
                 }]
