@@ -162,15 +162,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-2.5-flash';
+        let modelUsed = 'gemini-2.5-pro';
         let startTime = Date.now();
 
         // TRY 1: Fast model first (1.5-flash) - takes 5-15 seconds
         try {
-            console.log('\n📤 Trying fast model: gemini-2.5-flash');
+            console.log('\n📤 Trying fast model: gemini-2.5-pro');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash",
+                model: "gemini-2.5-pro",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
@@ -194,12 +194,12 @@ app.post('/api/generate-design', async (req, res) => {
             console.log('⚠️ Fast model failed:', fastError.message);
             console.log('Trying 2.5 flash model...');
             
-            modelUsed = 'gemini-2.5-flash';
+            modelUsed = 'gemini-2.5-pro';
             
             // TRY 2: Slower but more capable model (2.5-flash) - takes 20-40 seconds
             try {
                 const slowModel = genAI.getGenerativeModel({ 
-                    model: "gemini-2.5-flash",
+                    model: "gemini-2.5-pro",
                     generationConfig: {
                         temperature: 0.7,
                         maxOutputTokens: 8192,
