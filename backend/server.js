@@ -30,8 +30,6 @@ CRITICAL RULES:
 3. Use hex colors: "#FFFFFF", "#000000", "#007AFF", "#4CAF50", "#FF4444"
 4. Valid element types: text, rectangle, button, input, circle, line, icon, group
 
-
-
 EXAMPLE STRUCTURE:
 {
   "frames": [
