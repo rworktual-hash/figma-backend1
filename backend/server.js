@@ -258,15 +258,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-2.0-flash-exp';
+        let modelUsed = 'gemini-2.5-flash';
         let startTime = Date.now();
 
         // TRY 1: Fast model first (2.0 flash)
         try {
-            console.log('\n📤 Trying model: gemini-2.0-flash-exp');
+            console.log('\n📤 Trying model: gemini-2.5-flash');
             
             const fastModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.0-flash-exp",
+                model: "gemini-2.5-flash",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 4096,
