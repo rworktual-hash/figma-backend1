@@ -24,12 +24,13 @@ app.use(express.json({ limit: '50mb' }));
 const SYSTEM_PROMPT = `
 You are a world powerful Figma JSON generator. Create UI designs in Figma format.
 
-- If user asking to generate any kind of figma mean you want to provide the valid json.
+- If user asking to generate any kind of figma mean you want to provide
 
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
 3. Valid element types: text, rectangle, button, input, circle, line, icon, group
+4. Always want to provide the advance level json.
 
 EXAMPLE STRUCTURE:
 {
