@@ -19,420 +19,87 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 
 // ===========================================
-// STRICT SYSTEM PROMPT - FORCE JSON OUTPUT
+// SYSTEM PROMPT FOR GEMINI (Simplified for speed)
 // ===========================================
 const SYSTEM_PROMPT = `
-You are a Figma JSON generator. Create COMPLETE website designs in valid JSON format.
+You are a Figma JSON generator. Create UI designs in Figma format.
 
-OUTPUT ONLY RAW JSON - NO MARKDOWN, NO EXPLANATIONS, NO COMMENTS.
+CRITICAL RULES:
+1. Return ONLY valid JSON with a "frames" array
+2. Each frame needs: type, name, width, height, backgroundColor, children array
+3. Use hex colors: "#FFFFFF", "#000000", "#007AFF", "#4CAF50", "#FF4444"
+4. Valid element types: text, rectangle, button, input, circle, line, icon, group
 
-CRITICAL: Start your response with { and end with } - NOTHING ELSE.
 
-STRICT JSON RULES:
-- All keys MUST be in double quotes
-- All string values MUST be in double quotes  
-- No trailing commas allowed
-- No single quotes anywhere
-- No // or /* comments
 
-REQUIRED STRUCTURE:
+EXAMPLE STRUCTURE:
 {
   "frames": [
     {
       "type": "frame",
-      "name": "Tech Startup Landing Page",
+      "name": "Design Name",
       "width": 1440,
-      "height": 1024,
+      "height": 900,
       "backgroundColor": "#FFFFFF",
       "children": [
-        { "type": "frame", "name": "Navigation", ... },
-        { "type": "frame", "name": "Hero Section", ... },
-        { "type": "frame", "name": "Features Section", ... },
-        { "type": "frame", "name": "Footer", ... }
+        {
+          "type": "text",
+          "text": "Hello World",
+          "fontSize": 32,
+          "color": "#000000",
+          "x": 100,
+          "y": 100
+        }
       ]
     }
   ]
 }
 
-ELEMENT TYPES: text, rectangle, button, frame, circle, line, input, image
-
-Return ONLY valid JSON starting with { and ending with }.
+Keep designs clean and modern. Return ONLY the JSON, no other text.
 `;
 
 // ===========================================
-// ROBUST JSON PARSER WITH MULTIPLE FALLBACKS
+// JSON REPAIR FUNCTION
 // ===========================================
-function parseJSONResponse(text) {
-    console.log('🔧 Attempting to parse JSON...');
-    console.log('📄 Raw response length:', text.length);
-    console.log('📄 Raw response preview:', text.substring(0, 150));
-    
-    // 1. Try direct parse first
+function repairJSON(str) {
     try {
-        const result = JSON.parse(text);
-        if (result && result.frames) {
-            console.log('✅ Direct parse succeeded');
-            return result;
-        }
+        // First try normal parse
+        return JSON.parse(str);
     } catch (e) {
-        console.log('⚠️ Direct parse failed:', e.message);
-    }
-    
-    // 2. Remove markdown code blocks
-    let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
-    // 3. Remove ALL comments (// and /* */)
-    cleaned = cleaned.replace(/\/\/.*$/gm, '');
-    cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
-    
-    try {
-        const result = JSON.parse(cleaned);
-        if (result && result.frames) {
-            console.log('✅ Comment-stripped parse succeeded');
-            return result;
-        }
-    } catch (e) {
-        console.log('⚠️ Comment-stripped parse failed:', e.message);
-    }
-    
-    // 4. Fix common JSON errors
-    cleaned = cleaned
-        .replace(/'/g, '"')  // Single quotes to double
-        .replace(/,(\s*[}\]])/g, '$1')  // Trailing commas
-        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');  // Unquoted keys
-    
-    try {
-        const result = JSON.parse(cleaned);
-        if (result && result.frames) {
-            console.log('✅ Common-fix parse succeeded');
-            return result;
-        }
-    } catch (e) {
-        console.log('⚠️ Common-fix parse failed:', e.message);
-    }
-    
-    // 5. Extract JSON from anywhere in text
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-        let extracted = jsonMatch[0];
-        extracted = extracted
-            .replace(/'/g, '"')
-            .replace(/,(\s*[}\]])/g, '$1')
-            .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+        console.log('⚠️ Repairing JSON...');
+        
+        // Remove markdown code blocks
+        str = str.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        
+        // Fix trailing commas
+        str = str.replace(/,(\s*[}\]])/g, '$1');
+        
+        // Add missing quotes to property names
+        str = str.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+        
+        // Fix missing commas between objects
+        str = str.replace(/}(\s*){/g, '},$1{');
         
         try {
-            const result = JSON.parse(extracted);
-            if (result && result.frames) {
-                console.log('✅ Extracted JSON parse succeeded');
-                return result;
+            return JSON.parse(str);
+        } catch (e2) {
+            // Try to extract JSON object
+            const jsonMatch = str.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                return JSON.parse(jsonMatch[0]);
             }
-        } catch (e) {
-            console.log('⚠️ Extracted parse failed:', e.message);
+            throw e2;
         }
     }
-    
-    // 6. Last resort - try to find and fix "frames" array
-    const framesMatch = cleaned.match(/"frames"\s*:\s*\[[\s\S]*\]/);
-    if (framesMatch) {
-        try {
-            const result = JSON.parse('{' + framesMatch[0] + '}');
-            if (result && result.frames && Array.isArray(result.frames)) {
-                console.log('✅ Frames-extraction succeeded');
-                return result;
-            }
-        } catch (e) {
-            console.log('⚠️ Frames-extraction failed:', e.message);
-        }
-    }
-    
-    console.log('❌ All parsing attempts failed');
-    return null;
 }
 
 // ===========================================
-// PROFESSIONAL FALLBACK DESIGN TEMPLATE
-// ===========================================
-function getFallbackDesign(prompt) {
-    return {
-        frames: [
-            {
-                type: "frame",
-                name: prompt || "Website Design",
-                width: 1440,
-                height: 1024,
-                backgroundColor: "#FFFFFF",
-                children: [
-                    {
-                        type: "frame",
-                        name: "Navigation Bar",
-                        x: 0,
-                        y: 0,
-                        width: 1440,
-                        height: 80,
-                        backgroundColor: "#FFFFFF",
-                        children: [
-                            {
-                                type: "text",
-                                name: "Logo",
-                                text: "BrandName",
-                                fontSize: 24,
-                                fontWeight: "Bold",
-                                color: "#000000",
-                                x: 40,
-                                y: 28
-                            },
-                            {
-                                type: "text",
-                                name: "Nav Link 1",
-                                text: "Features",
-                                fontSize: 16,
-                                color: "#6B7280",
-                                x: 400,
-                                y: 30
-                            },
-                            {
-                                type: "text",
-                                name: "Nav Link 2",
-                                text: "Pricing",
-                                fontSize: 16,
-                                color: "#6B7280",
-                                x: 520,
-                                y: 30
-                            },
-                            {
-                                type: "text",
-                                name: "Nav Link 3",
-                                text: "About",
-                                fontSize: 16,
-                                color: "#6B7280",
-                                x: 640,
-                                y: 30
-                            },
-                            {
-                                type: "button",
-                                name: "Get Started Button",
-                                text: "Get Started",
-                                width: 140,
-                                height: 44,
-                                backgroundColor: "#0066FF",
-                                cornerRadius: 8,
-                                textColor: "#FFFFFF",
-                                fontSize: 16,
-                                x: 1240,
-                                y: 18
-                            }
-                        ]
-                    },
-                    {
-                        type: "frame",
-                        name: "Hero Section",
-                        x: 0,
-                        y: 80,
-                        width: 1440,
-                        height: 500,
-                        backgroundColor: "#F9FAFB",
-                        children: [
-                            {
-                                type: "text",
-                                name: "Hero Headline",
-                                text: prompt || "Build Amazing Products",
-                                fontSize: 56,
-                                fontWeight: "Bold",
-                                color: "#111827",
-                                x: 80,
-                                y: 120,
-                                width: 800
-                            },
-                            {
-                                type: "text",
-                                name: "Hero Subheadline",
-                                text: "Create stunning designs faster than ever before with AI-powered tools",
-                                fontSize: 20,
-                                color: "#6B7280",
-                                x: 80,
-                                y: 210,
-                                width: 600
-                            },
-                            {
-                                type: "button",
-                                name: "Primary CTA",
-                                text: "Start Free Trial",
-                                width: 200,
-                                height: 56,
-                                backgroundColor: "#0066FF",
-                                cornerRadius: 8,
-                                textColor: "#FFFFFF",
-                                fontSize: 18,
-                                x: 80,
-                                y: 300
-                            },
-                            {
-                                type: "button",
-                                name: "Secondary CTA",
-                                text: "Watch Demo",
-                                width: 160,
-                                height: 56,
-                                backgroundColor: "#FFFFFF",
-                                cornerRadius: 8,
-                                textColor: "#0066FF",
-                                fontSize: 18,
-                                borderColor: "#0066FF",
-                                borderWidth: 2,
-                                x: 300,
-                                y: 300
-                            }
-                        ]
-                    },
-                    {
-                        type: "frame",
-                        name: "Features Section",
-                        x: 0,
-                        y: 580,
-                        width: 1440,
-                        height: 300,
-                        backgroundColor: "#FFFFFF",
-                        children: [
-                            {
-                                type: "text",
-                                name: "Features Title",
-                                text: "Features",
-                                fontSize: 36,
-                                fontWeight: "Bold",
-                                color: "#111827",
-                                x: 80,
-                                y: 40
-                            },
-                            {
-                                type: "frame",
-                                name: "Feature Card 1",
-                                x: 80,
-                                y: 100,
-                                width: 380,
-                                height: 180,
-                                backgroundColor: "#F9FAFB",
-                                cornerRadius: 12,
-                                children: [
-                                    {
-                                        type: "text",
-                                        name: "Feature 1 Title",
-                                        text: "Lightning Fast",
-                                        fontSize: 20,
-                                        fontWeight: "SemiBold",
-                                        color: "#111827",
-                                        x: 24,
-                                        y: 24
-                                    },
-                                    {
-                                        type: "text",
-                                        name: "Feature 1 Description",
-                                        text: "Generate designs in seconds, not hours",
-                                        fontSize: 14,
-                                        color: "#6B7280",
-                                        x: 24,
-                                        y: 56,
-                                        width: 332
-                                    }
-                                ]
-                            },
-                            {
-                                type: "frame",
-                                name: "Feature Card 2",
-                                x: 500,
-                                y: 100,
-                                width: 380,
-                                height: 180,
-                                backgroundColor: "#F9FAFB",
-                                cornerRadius: 12,
-                                children: [
-                                    {
-                                        type: "text",
-                                        name: "Feature 2 Title",
-                                        text: "Easy to Use",
-                                        fontSize: 20,
-                                        fontWeight: "SemiBold",
-                                        color: "#111827",
-                                        x: 24,
-                                        y: 24
-                                    },
-                                    {
-                                        type: "text",
-                                        name: "Feature 2 Description",
-                                        text: "Intuitive interface for everyone",
-                                        fontSize: 14,
-                                        color: "#6B7280",
-                                        x: 24,
-                                        y: 56,
-                                        width: 332
-                                    }
-                                ]
-                            },
-                            {
-                                type: "frame",
-                                name: "Feature Card 3",
-                                x: 920,
-                                y: 100,
-                                width: 380,
-                                height: 180,
-                                backgroundColor: "#F9FAFB",
-                                cornerRadius: 12,
-                                children: [
-                                    {
-                                        type: "text",
-                                        name: "Feature 3 Title",
-                                        text: "Export Ready",
-                                        fontSize: 20,
-                                        fontWeight: "SemiBold",
-                                        color: "#111827",
-                                        x: 24,
-                                        y: 24
-                                    },
-                                    {
-                                        type: "text",
-                                        name: "Feature 3 Description",
-                                        text: "Export to any format instantly",
-                                        fontSize: 14,
-                                        color: "#6B7280",
-                                        x: 24,
-                                        y: 56,
-                                        width: 332
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        type: "frame",
-                        name: "Footer",
-                        x: 0,
-                        y: 880,
-                        width: 1440,
-                        height: 144,
-                        backgroundColor: "#1F2937",
-                        children: [
-                            {
-                                type: "text",
-                                name: "Footer Text",
-                                text: "© 2024 BrandName. All rights reserved.",
-                                fontSize: 14,
-                                color: "#9CA3AF",
-                                x: 80,
-                                y: 60
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    };
-}
-
-// ===========================================
-// HEALTH CHECK
+// HEALTH CHECK ENDPOINT
 // ===========================================
 app.get('/', (req, res) => {
     res.json({ 
         status: 'online', 
-        message: '✅ Figma backend is LIVE!',
+        message: '✅ Figma backend with Gemini is LIVE!',
         endpoints: {
             health: 'GET /',
             status: 'GET /api/status',
@@ -443,31 +110,24 @@ app.get('/', (req, res) => {
     });
 });
 
+// ===========================================
+// STATUS ENDPOINT
+// ===========================================
 app.get('/api/status', (req, res) => {
     res.json({
         status: 'online',
         uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development',
         gemini_configured: !!process.env.GEMINI_API_KEY,
         timestamp: new Date().toISOString()
     });
 });
 
 // ===========================================
-// TEST ENDPOINT - Returns a simple design
-// ===========================================
-app.get('/api/test-design', (req, res) => {
-    res.json({
-        success: true,
-        model: 'test-endpoint',
-        design: getFallbackDesign('Test Design'),
-        timestamp: new Date().toISOString()
-    });
-});
-
-// ===========================================
-// GENERATE DESIGN ENDPOINT
+// GENERATE DESIGN - WITH FASTER MODEL & LONGER TIMEOUT
 // ===========================================
 app.post('/api/generate-design', async (req, res) => {
+    // Set longer timeout (90 seconds)
     req.setTimeout(90000);
     res.setTimeout(90000);
     
@@ -481,170 +141,267 @@ app.post('/api/generate-design', async (req, res) => {
             });
         }
 
-        console.log('\n' + '='.repeat(50));
-        console.log('🎨 DESIGN REQUEST:', prompt);
-        
+        console.log('\n' + '='.repeat(60));
+        console.log('🎨 GENERATE DESIGN REQUEST');
+        console.log('='.repeat(60));
+        console.log('Prompt:', prompt);
+        console.log('Time:', new Date().toISOString());
+
+        // Check API key
         if (!process.env.GEMINI_API_KEY) {
+            console.log('❌ GEMINI_API_KEY not configured');
             return res.status(500).json({
                 success: false,
                 error: 'GEMINI_API_KEY not configured'
             });
         }
 
-        let designJson = null;
-        let modelUsed = '';
+        let designJson;
+        let modelUsed = 'gemini-1.5-flash';
         let startTime = Date.now();
-        let attemptLog = [];
 
-        // Try gemini-2.0-flash-exp
+        // TRY 1: Fast model first (1.5-flash) - takes 5-15 seconds
         try {
-            modelUsed = 'gemini-2.0-flash-exp';
-            console.log('📤 Trying:', modelUsed);
+            console.log('\n📤 Trying fast model: gemini-1.5-flash');
             
-            const model = genAI.getGenerativeModel({ 
-                model: modelUsed,
+            const fastModel = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-flash",
                 generationConfig: {
-                    temperature: 0.3,
-                    maxOutputTokens: 8192,
+                    temperature: 0.7,
+                    maxOutputTokens: 4096,
                 }
             });
 
-            const fullPrompt = `${SYSTEM_PROMPT}\n\nCreate a complete ${prompt} website design. Return ONLY valid JSON.`;
+            // Simpler prompt for faster response
+            const fastPrompt = `Create a ${prompt} design. Return JSON with frames array. Include header, content sections. Use hex colors. Keep it clean.`;
             
-            const result = await model.generateContent(fullPrompt);
-            const responseText = result.response.text();
+            const fastResult = await fastModel.generateContent(fastPrompt);
+            const fastResponse = await fastResult.response;
+            let fastText = fastResponse.text();
             
-            console.log(`📥 Response (${(Date.now() - startTime)/1000}s):`, responseText.substring(0, 100) + '...');
+            console.log(`📥 Fast model response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+            console.log('Response length:', fastText.length);
             
-            designJson = parseJSONResponse(responseText);
-            
-            if (designJson && designJson.frames) {
-                console.log('✅ SUCCESS with', modelUsed);
-            } else {
-                throw new Error('Invalid JSON structure');
-            }
+            designJson = repairJSON(fastText);
+            console.log('✅ Fast model succeeded');
 
-        } catch (error1) {
-            console.log('⚠️ Failed:', error1.message);
-            attemptLog.push({ model: modelUsed, error: error1.message });
+        } catch (fastError) {
+            console.log('⚠️ Fast model failed:', fastError.message);
+            console.log('Trying 2.5 flash model...');
             
-            // Try gemini-2.5-flash as fallback
+            modelUsed = 'gemini-2.5-flash';
+            
+            // TRY 2: Slower but more capable model (2.5-flash) - takes 20-40 seconds
             try {
-                modelUsed = 'gemini-2.5-flash';
-                console.log('📤 Trying:', modelUsed);
-                
-                const model = genAI.getGenerativeModel({ 
-                    model: modelUsed,
+                const slowModel = genAI.getGenerativeModel({ 
+                    model: "gemini-2.5-flash",
                     generationConfig: {
-                        temperature: 0.3,
+                        temperature: 0.7,
                         maxOutputTokens: 8192,
                     }
                 });
 
-                const fullPrompt = `${SYSTEM_PROMPT}\n\nCreate a complete ${prompt} website design. Return ONLY valid JSON starting with { and ending with }.`;
+                const fullPrompt = `${SYSTEM_PROMPT}\n\nCreate a ${prompt} design. Include header, hero section, content areas. Make it complete.`;
                 
-                const result = await model.generateContent(fullPrompt);
-                const responseText = result.response.text();
+                const slowResult = await slowModel.generateContent(fullPrompt);
+                const slowResponse = await slowResult.response;
+                let slowText = slowResponse.text();
                 
-                console.log(`📥 Response (${(Date.now() - startTime)/1000}s):`, responseText.substring(0, 100) + '...');
+                console.log(`📥 2.5 flash response received in ${((Date.now() - startTime)/1000).toFixed(1)}s`);
+                console.log('Response length:', slowText.length);
                 
-                designJson = parseJSONResponse(responseText);
-                
-                if (designJson && designJson.frames) {
-                    console.log('✅ SUCCESS with', modelUsed);
-                } else {
-                    throw new Error('Invalid JSON structure');
-                }
+                designJson = repairJSON(slowText);
+                console.log('✅ 2.5 flash model succeeded');
 
-            } catch (error2) {
-                console.log('⚠️ Failed:', error2.message);
-                attemptLog.push({ model: modelUsed, error: error2.message });
-                
-                // Try gemini-1.5-flash as last resort
-                try {
-                    modelUsed = 'gemini-1.5-flash';
-                    console.log('📤 Trying:', modelUsed);
-                    
-                    const model = genAI.getGenerativeModel({ 
-                        model: modelUsed,
-                        generationConfig: {
-                            temperature: 0.3,
-                            maxOutputTokens: 8192,
-                        }
-                    });
-
-                    const fullPrompt = `${SYSTEM_PROMPT}\n\nReturn ONLY valid JSON for ${prompt}.`;
-                    
-                    const result = await model.generateContent(fullPrompt);
-                    const responseText = result.response.text();
-                    
-                    designJson = parseJSONResponse(responseText);
-                    
-                    if (designJson && designJson.frames) {
-                        console.log('✅ SUCCESS with', modelUsed);
-                    } else {
-                        throw new Error('Invalid JSON structure');
-                    }
-
-                } catch (error3) {
-                    console.log('⚠️ All models failed, using fallback');
-                    attemptLog.push({ model: modelUsed, error: error3.message });
-                    modelUsed = 'fallback-template';
-                    designJson = getFallbackDesign(prompt);
-                }
+            } catch (slowError) {
+                console.log('⚠️ Both models failed:', slowError.message);
+                throw new Error('All models failed to generate design');
             }
         }
 
-        // Validate final structure
-        if (!designJson || !designJson.frames) {
-            console.log('⚠️ Invalid structure, using fallback');
-            designJson = getFallbackDesign(prompt);
-            modelUsed = 'fallback-template';
+        // ===========================================
+        // ENSURE CORRECT STRUCTURE (frames array)
+        // ===========================================
+        console.log('\n📦 Validating JSON structure...');
+        
+        if (!designJson) {
+            throw new Error('No design data generated');
         }
 
-        const totalTime = ((Date.now() - startTime)/1000).toFixed(1);
-        console.log('='.repeat(50));
-        console.log(`✅ DONE (${totalTime}s) - Model: ${modelUsed}`);
-        console.log('📦 Frames count:', designJson.frames ? designJson.frames.length : 0);
-        console.log('📦 First frame name:', designJson.frames[0] ? designJson.frames[0].name : 'N/A');
-        console.log('📦 Response keys:', Object.keys(designJson));
-        console.log('='.repeat(50));
+        // Case 1: Already has frames array
+        if (designJson.frames && Array.isArray(designJson.frames)) {
+            console.log('✅ Valid frames array found');
+        }
+        // Case 2: Single frame object
+        else if (designJson.type === 'frame') {
+            console.log('📦 Converting single frame to frames array');
+            designJson = { frames: [designJson] };
+        }
+        // Case 3: Has design property with frames
+        else if (designJson.design && designJson.design.frames) {
+            console.log('📦 Extracting frames from design property');
+            designJson = { frames: designJson.design.frames };
+        }
+        // Case 4: Array of frames
+        else if (Array.isArray(designJson)) {
+            console.log('📦 Converting array to frames object');
+            designJson = { frames: designJson };
+        }
+        // Case 5: No recognizable structure - create fallback
+        else {
+            console.log('⚠️ No frames found, creating fallback');
+            designJson = {
+                frames: [{
+                    type: "frame",
+                    name: prompt,
+                    width: 1440,
+                    height: 900,
+                    backgroundColor: "#FFFFFF",
+                    children: [
+                        {
+                            type: "text",
+                            text: prompt,
+                            fontSize: 32,
+                            fontWeight: "Bold",
+                            color: "#000000",
+                            x: 100,
+                            y: 100
+                        },
+                        {
+                            type: "text",
+                            text: "Generated with AI",
+                            fontSize: 18,
+                            color: "#666666",
+                            x: 100,
+                            y: 160
+                        },
+                        {
+                            type: "rectangle",
+                            width: 1240,
+                            height: 2,
+                            color: "#EEEEEE",
+                            x: 100,
+                            y: 200
+                        },
+                        {
+                            type: "button",
+                            text: "Get Started",
+                            width: 200,
+                            height: 50,
+                            backgroundColor: "#007AFF",
+                            cornerRadius: 8,
+                            textColor: "#FFFFFF",
+                            x: 100,
+                            y: 250
+                        }
+                    ]
+                }]
+            };
+        }
 
-        const response = {
+        // Ensure each frame has required properties
+        designJson.frames = designJson.frames.map(frame => ({
+            type: 'frame',
+            name: frame.name || prompt,
+            width: frame.width || 1440,
+            height: frame.height || 900,
+            backgroundColor: frame.backgroundColor || '#FFFFFF',
+            children: frame.children || [],
+            ...frame
+        }));
+
+        const totalTime = ((Date.now() - startTime)/1000).toFixed(1);
+        console.log('\n' + '='.repeat(60));
+        console.log('✅ DESIGN GENERATION COMPLETE');
+        console.log('='.repeat(60));
+        console.log(`⏱️  Total time: ${totalTime}s`);
+        console.log(`🤖 Model used: ${modelUsed}`);
+        console.log(`📦 Frames created: ${designJson.frames.length}`);
+        console.log('='.repeat(60));
+
+        // Send successful response
+        res.json({
             success: true,
             prompt: prompt,
             model: modelUsed,
             generationTime: `${totalTime}s`,
             design: designJson,
             timestamp: new Date().toISOString()
-        };
-
-        console.log('📤 Sending response:', JSON.stringify(response, null, 2).substring(0, 500) + '...');
-
-        res.json(response);
+        });
 
     } catch (error) {
-        console.error('❌ ERROR:', error.message);
+        console.error('\n❌ ERROR:', error.message);
+        console.error('Stack:', error.stack);
+        
+        // ALWAYS return a valid design, even on error
+        console.log('📦 Returning fallback design due to error');
         
         res.json({
             success: true,
             prompt: req.body.prompt || 'design',
-            model: 'emergency-fallback',
-            design: getFallbackDesign(req.body.prompt || 'Design'),
+            model: 'fallback',
+            design: {
+                frames: [{
+                    type: "frame",
+                    name: req.body.prompt || 'Design',
+                    width: 1440,
+                    height: 900,
+                    backgroundColor: "#FFFFFF",
+                    children: [
+                        {
+                            type: "text",
+                            text: req.body.prompt || 'Design',
+                            fontSize: 32,
+                            fontWeight: "Bold",
+                            color: "#000000",
+                            x: 100,
+                            y: 100
+                        },
+                        {
+                            type: "text",
+                            text: "Generated with fallback (API error)",
+                            fontSize: 18,
+                            color: "#FF4444",
+                            x: 100,
+                            y: 160
+                        },
+                        {
+                            type: "rectangle",
+                            width: 1240,
+                            height: 2,
+                            color: "#EEEEEE",
+                            x: 100,
+                            y: 200
+                        },
+                        {
+                            type: "button",
+                            text: "Try Again",
+                            width: 200,
+                            height: 50,
+                            backgroundColor: "#007AFF",
+                            cornerRadius: 8,
+                            textColor: "#FFFFFF",
+                            x: 100,
+                            y: 250
+                        }
+                    ]
+                }]
+            },
             timestamp: new Date().toISOString()
         });
     }
 });
 
 // ===========================================
-// PROCESS ENDPOINT
+// PROCESS DATA FROM FIGMA
 // ===========================================
 app.post('/api/process', (req, res) => {
-    console.log('📥 Process request:', req.body);
+    console.log('📥 Process endpoint received:', req.body);
     res.json({
         success: true,
-        message: 'Processed!',
-        receivedAt: new Date().toISOString()
+        message: 'Data processed successfully!',
+        receivedAt: new Date().toISOString(),
+        data: req.body
     });
 });
 
@@ -654,7 +411,13 @@ app.post('/api/process', (req, res) => {
 app.use('*', (req, res) => {
     res.status(404).json({
         success: false,
-        error: 'Endpoint not found'
+        error: 'Endpoint not found',
+        available: {
+            'GET /': 'Health check',
+            'GET /api/status': 'Server status',
+            'POST /api/process': 'Process Figma data',
+            'POST /api/generate-design': 'Generate design with Gemini'
+        }
     });
 });
 
@@ -662,10 +425,17 @@ app.use('*', (req, res) => {
 // START SERVER
 // ===========================================
 app.listen(port, '0.0.0.0', () => {
-    console.log('\n🚀 SERVER STARTED');
-    console.log('📍 URL: https://figma-backend-rahul.onrender.com');
-    console.log('📡 Port:', port);
-    console.log('✨ Gemini:', process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing');
-    console.log('========================\n');
+    console.log('\n' + '='.repeat(60));
+    console.log('🚀 BACKEND SERVER STARTED');
+    console.log('='.repeat(60));
+    console.log(`📍 URL: https://figma-backend-rahul.onrender.com`);
+    console.log(`📡 Port: ${port}`);
+    console.log(`✨ Gemini API: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+    console.log('='.repeat(60));
+    console.log('📡 Endpoints:');
+    console.log('   GET  /');
+    console.log('   GET  /api/status');
+    console.log('   POST /api/process');
+    console.log('   POST /api/generate-design');
+    console.log('='.repeat(60) + '\n');
 });
-
