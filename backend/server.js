@@ -1025,7 +1025,7 @@ app.post('/api/generate-next-page', async (req, res) => {
         const generationPrompt = buildGenerationPrompt(project, nextPageType);
 
         let designJson;
-        let modelUsed = 'gemini-2.5-flash';
+        let modelUsed = 'gemini-3-pro-preview';
         let startTime = Date.now();
         let rawResponse = null;
         let filePath = null;
