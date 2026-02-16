@@ -77,47 +77,19 @@ You are a Figma JSON generator. Create UI designs in Figma format.
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
-3. Valid element types: text, rectangle, button, circle, line, icon, group, input, frame
+3. Valid element types: text, rectangle, button, circle, line, icon, group, input, frame, image
 4. All elements must have x, y coordinates
 5. Buttons should have: type, text, width, height, backgroundColor, textColor, x, y, cornerRadius
 6. Input fields should have: type, placeholder, width, height, backgroundColor, x, y
 7. Use APPROPRIATE COLORS based on the project type - analyze the project description to determine the right color scheme
 8. Each project type has distinct colors - do not use generic blue/white for everything
+9. INCLUDE IMAGE PLACEHOLDERS using type "image" with width, height, x, y, and borderRadius
 
-COLOR SCHEME GUIDELINES:
-- Technology/SaaS: Blues (#2563EB, #3B82F6), whites, grays
-- Healthcare/Medical: Teals (#14B8A6), soft blues (#60A5FA), clean whites
-- Finance/Banking: Deep blues (#1E40AF), golds (#D97706), professional grays
-- E-commerce/Retail: Vibrant oranges (#EA580C), reds (#DC2626), energetic colors
-- Education: Warm yellows (#F59E0B), greens (#10B981), friendly blues
-- Food/Restaurant: Warm reds (#B91C1C), oranges (#EA580C), appetizing yellows
-- Fitness/Gym: Bold reds (#DC2626), blacks (#111827), energetic oranges
-- Nature/Environment: Greens (#16A34A), earth tones (#92400E), sky blues
-- Luxury/Premium: Blacks (#000000), golds (#D97706), deep purples (#7C3AED)
-- Creative/Agency: Purples (#7C3AED), pinks (#EC4899), creative gradients
-
-EXAMPLE STRUCTURE:
-{
-  "frames": [
-    {
-      "type": "frame",
-      "name": "Design Name",
-      "width": 1440,
-      "height": 900,
-      "backgroundColor": "#FFFFFF",
-      "children": [
-        {
-          "type": "text",
-          "text": "Hello World",
-          "fontSize": 32,
-          "color": "#000000",
-          "x": 100,
-          "y": 100
-        }
-      ]
-    }
-  ]
-}
+IMAGE PLACEHOLDER GUIDELINES:
+- Use type: "image" for photo placeholders (e.g., {"type": "image", "name": "Hero Image", "width": 600, "height": 400, "x": 700, "y": 100, "borderRadius": 12})
+- Include images in hero sections, feature cards, product showcases, team photos, gallery sections
+- Images should have realistic dimensions (e.g., 400x300, 600x400, 200x200 for avatars)
+- Add borderRadius to images for modern look (8px, 12px, or 50% for circular)
 
 Keep designs clean and modern. Return ONLY the JSON, no other text.
 `;
@@ -126,17 +98,21 @@ const LOGIN_PAGE_PROMPT = `
 You are a Figma JSON generator specializing in Login/Authentication pages.
 
 Create a professional login page with:
-- Clean centered layout
-- Email/username input field
-- Password input field
-- Login button (primary action)
-- "Forgot password?" link
-- "Sign up" or "Create account" link
-- Optional: Social login buttons (Google, Facebook, etc.)
-- Logo/branding at top
+- Split layout: Left side with hero image placeholder, right side with login form
+- Hero image on left showing brand/product (type: "image", width: 600, height: 500)
+- Login form card on right with:
+  - Logo/branding at top
+  - Email/username input field
+  - Password input field
+  - Login button (primary action)
+  - "Forgot password?" link
+  - "Sign up" or "Create account" link
+  - Optional: Social login buttons
 
 Design requirements:
-- Center all elements vertically and horizontally
+- Use a two-column layout (50/50 split)
+- Left side: Visual with image placeholder showing the project type
+- Right side: Centered login form card with white background
 - Use consistent spacing (24-32px between elements)
 - Input fields: 320px width, 48px height, rounded corners (8px)
 - Primary button: Full width of inputs, 48px height, prominent color
@@ -149,6 +125,7 @@ CRITICAL RULES:
 2. Use colors that match the project type (not generic blue)
 3. All interactive elements must be clearly labeled
 4. Include proper visual hierarchy
+5. MUST include at least ONE image placeholder element on the left side
 `;
 
 const HOME_PAGE_PROMPT = `
@@ -156,35 +133,35 @@ You are a Figma JSON generator specializing in Home/Landing pages.
 
 Create a comprehensive home page with these sections:
 1. Navigation bar with logo and menu items (Home, Features, About, Contact, Login)
-2. Hero section with headline, subheadline, and CTA button
-3. Features/Services section (3-4 feature cards with icons)
-4. About/Content section
-5. Call-to-action section
-6. Footer with links and copyright
+2. Hero section with headline, subheadline, CTA button, and HERO IMAGE PLACEHOLDER (600x400)
+3. Features/Services section (3-4 feature cards with ICONS/IMAGES 80x80)
+4. About/Content section with TEAM/PRODUCT IMAGES (200x200)
+5. Gallery/Showcase section with IMAGE GRID (3-4 images, 250x200 each)
+6. Testimonials section with AVATAR IMAGES (circular, 60x60)
+7. Call-to-action section
+8. Footer with links and copyright
 
 Design requirements:
 - Professional, modern design with PROJECT-SPECIFIC colors
 - Clear visual hierarchy with proper contrast
 - Multiple interactive buttons that could link to other pages
-- Use colors based on project type analysis:
-  * Tech: Blues, modern grays
-  * Food: Warm reds, oranges, yellows
-  * Fitness: Bold reds, blacks, energetic tones
-  * Healthcare: Teals, soft blues, clean whites
-  * Finance: Deep blues, golds, professional tones
-  * Education: Warm yellows, greens, friendly colors
-  * E-commerce: Vibrant oranges, reds, energetic
-  * Nature: Greens, earth tones, sky blues
-  * Luxury: Blacks, golds, deep purples
-  * Creative: Purples, pinks, creative gradients
+- Use colors based on project type analysis
 - Responsive layout (1440px width)
 - Proper spacing and typography
-- Visual elements that reflect the project type
+- INCLUDE MULTIPLE IMAGE PLACEHOLDERS throughout the page
+
+IMAGE REQUIREMENTS:
+- Hero section: Large image placeholder (600x400 or 800x500)
+- Feature cards: Small icon/image placeholders (80x80)
+- About section: Team/product images (200x200)
+- Gallery: Grid of image placeholders (250x200 each, 3-4 images)
+- Testimonials: Avatar circles (60x60, borderRadius: 50%)
 
 CRITICAL: 
 1. Include multiple buttons that would require detail pages (e.g., "Learn More", "Get Started", "View Details", "Contact Us")
 2. Use APPROPRIATE colors for the project type - do not default to blue
-3. Return ONLY valid JSON with all interactive elements clearly labeled
+3. MUST include at least 5-8 image placeholder elements
+4. Return ONLY valid JSON with all interactive elements clearly labeled
 `;
 
 const DETAIL_PAGE_PROMPT = `
@@ -195,10 +172,12 @@ Create a detailed content page based on the specific feature or section provided
 Page structure:
 1. Navigation bar (consistent with home page)
 2. Page header with title and breadcrumb
-3. Main content area with detailed information, images or icons, feature highlights
-4. Call-to-action section
-5. Related links or next steps
-6. Footer (consistent with home page)
+3. Main content area with detailed information, IMAGES, and feature highlights
+4. Image gallery or showcase section (2-3 images, 300x200 each)
+5. Feature breakdown with visual icons/images (80x80)
+6. Call-to-action section
+7. Related links or next steps
+8. Footer (consistent with home page)
 
 Design requirements:
 - Match the design system from previous pages (colors, typography, spacing)
@@ -208,12 +187,20 @@ Design requirements:
 - Relevant action buttons
 - Content should be detailed and informative
 - Visual elements should support the content
+- INCLUDE RELEVANT IMAGE PLACEHOLDERS for the specific feature/topic
+
+IMAGE REQUIREMENTS:
+- Hero/feature image: Large placeholder (500x350 or 600x400)
+- Detail images: Medium placeholders (300x200 each, 2-3 images)
+- Icon illustrations: Small decorative images (80x80)
+- Gallery grid: Multiple image placeholders if applicable
 
 CRITICAL: 
 1. Maintain color consistency with previous pages
 2. Use the project-specific color scheme (not generic colors)
-3. Return ONLY valid JSON
-4. Ensure visual hierarchy is clear
+3. MUST include at least 3-5 image placeholder elements
+4. Return ONLY valid JSON
+5. Ensure visual hierarchy is clear
 `;
 
 // ===========================================
@@ -1103,13 +1090,13 @@ app.post('/api/generate-design', async (req, res) => {
 });
 
 // ===========================================
-// MULTI-PAGE PROJECT ENDPOINTS
+// BLUEPRINT & STEP-BY-STEP GENERATION ENDPOINTS
 // ===========================================
 
-// 1. Initialize a new multi-page project
-app.post('/api/generate-project', async (req, res) => {
+// 1. Create Website Blueprint - Analyzes description and creates a page plan
+app.post('/api/create-blueprint', async (req, res) => {
     try {
-        const { projectName, description, pages } = req.body;
+        const { projectName, description } = req.body;
         
         if (!projectName || !description) {
             return res.status(400).json({
@@ -1119,37 +1106,50 @@ app.post('/api/generate-project', async (req, res) => {
         }
 
         console.log('\n' + '='.repeat(60));
-        console.log('🚀 CREATE MULTI-PAGE PROJECT');
+        console.log('📋 CREATING WEBSITE BLUEPRINT');
         console.log('='.repeat(60));
         console.log('Project:', projectName);
         console.log('Description:', description);
 
-        let pageSequence;
-        if (pages && Array.isArray(pages) && pages.length > 0) {
-            pageSequence = pages;
-        } else {
-            pageSequence = analyzeDescriptionForPages(description);
-        }
+        // Analyze and create page sequence
+        const pageSequence = analyzeDescriptionForPages(description);
+        const colorScheme = detectProjectType(description, projectName);
 
+        // Create project but don't generate pages yet
         const project = createProject(projectName, description, pageSequence);
 
-        console.log('✅ Project created:', project.id);
+        // Create blueprint object
+        const blueprint = {
+            projectId: project.id,
+            projectName: project.name,
+            description: project.description,
+            colorScheme: colorScheme,
+            totalPages: pageSequence.length,
+            pageSequence: pageSequence.map((pageType, index) => ({
+                step: index + 1,
+                pageType: pageType,
+                pageName: getPageName(pageType),
+                description: getPageDescription(pageType)
+            })),
+            workflow: {
+                step1: 'Generate Login Page - POST /api/generate-page with projectId and pageType: "login"',
+                step2: 'Generate Home Page - POST /api/generate-page with projectId and pageType: "home"',
+                step3: 'Generate Related Pages - POST /api/generate-page for each remaining page'
+            }
+        };
+
+        console.log('✅ Blueprint created:', project.id);
         console.log('📋 Page sequence:', pageSequence.join(' → '));
 
         res.json({
             success: true,
-            projectId: project.id,
-            projectName: project.name,
-            description: project.description,
-            totalPages: pageSequence.length,
-            pageSequence: pageSequence,
-            status: 'initialized',
-            message: 'Project initialized. Use /api/generate-next-page to start generating pages.',
+            blueprint: blueprint,
+            message: 'Blueprint created. Start generating pages one by one using /api/generate-page',
             timestamp: new Date().toISOString()
         });
 
     } catch (error) {
-        console.error('❌ Error creating project:', error.message);
+        console.error('❌ Error creating blueprint:', error.message);
         res.status(500).json({
             success: false,
             error: error.message
@@ -1157,18 +1157,43 @@ app.post('/api/generate-project', async (req, res) => {
     }
 });
 
-// 2. Generate next page in sequence
-app.post('/api/generate-next-page', async (req, res) => {
-    req.setTimeout(90000);
-    res.setTimeout(90000);
+// Helper functions for blueprint
+function getPageName(pageType) {
+    const names = {
+        'login': 'Login/Authentication Page',
+        'home': 'Home/Landing Page',
+        'detail': 'Detail/Feature Page',
+        'contact': 'Contact Page',
+        'about': 'About Us Page',
+        'features': 'Features/Services Page'
+    };
+    return names[pageType] || 'Content Page';
+}
+
+function getPageDescription(pageType) {
+    const descriptions = {
+        'login': 'User authentication page with login form and branding',
+        'home': 'Main landing page with navigation, hero, features, and CTAs',
+        'detail': 'Detailed content page for specific features or sections',
+        'contact': 'Contact information and form page',
+        'about': 'Company information, team, and mission page',
+        'features': 'Detailed features and services showcase page'
+    };
+    return descriptions[pageType] || 'Content page';
+}
+
+// 2. Generate specific page by type - Returns immediately after generation
+app.post('/api/generate-page', async (req, res) => {
+    req.setTimeout(120000);
+    res.setTimeout(120000);
     
     try {
-        const { projectId } = req.body;
+        const { projectId, pageType } = req.body;
         
-        if (!projectId) {
+        if (!projectId || !pageType) {
             return res.status(400).json({
                 success: false,
-                error: 'projectId is required'
+                error: 'projectId and pageType are required'
             });
         }
 
@@ -1180,36 +1205,21 @@ app.post('/api/generate-next-page', async (req, res) => {
             });
         }
 
-        const nextPageType = getNextPageType(project);
-        
-        if (!nextPageType) {
-            const manifestPath = saveProjectManifest(project);
-            const completePath = saveCompleteProject(project);
-            updateProject(projectId, { status: 'completed' });
-            
-            return res.json({
-                success: true,
-                projectId: project.id,
-                status: 'completed',
-                message: 'All pages generated successfully',
-                totalPages: project.pages.length,
-                pages: project.pages.map(p => ({
-                    name: p.name,
-                    type: p.type,
-                    frameCount: p.json.frames ? p.json.frames.length : 0
-                })),
-                manifestFile: manifestPath,
-                completeProjectFile: completePath,
-                timestamp: new Date().toISOString()
+        // Validate page type
+        const validPageTypes = Object.values(PAGE_TYPES);
+        if (!validPageTypes.includes(pageType)) {
+            return res.status(400).json({
+                success: false,
+                error: `Invalid pageType. Must be one of: ${validPageTypes.join(', ')}`
             });
         }
 
         console.log('\n' + '='.repeat(60));
-        console.log(`📄 GENERATING PAGE: ${nextPageType.toUpperCase()}`);
+        console.log(`📄 GENERATING SINGLE PAGE: ${pageType.toUpperCase()}`);
         console.log('='.repeat(60));
         console.log('Project:', project.name);
         console.log('Project ID:', projectId);
-        console.log('Page:', project.currentPageIndex + 1, 'of', project.totalPages);
+        console.log('Page Type:', pageType);
 
         if (!process.env.GEMINI_API_KEY) {
             return res.status(500).json({
@@ -1218,9 +1228,9 @@ app.post('/api/generate-next-page', async (req, res) => {
             });
         }
 
-        const pageContext = buildPageContext(project, nextPageType);
-        const systemPrompt = getPagePrompt(nextPageType, project);
-        const generationPrompt = buildGenerationPrompt(project, nextPageType);
+        const pageContext = buildPageContext(project, pageType);
+        const systemPrompt = getPagePrompt(pageType, project);
+        const generationPrompt = buildGenerationPrompt(project, pageType);
 
         let designJson;
         let modelUsed = 'gemini-3-pro-preview';
@@ -1250,7 +1260,7 @@ app.post('/api/generate-next-page', async (req, res) => {
             
             // Save raw response
             rawResponse = text;
-            saveJsonToFile(`${nextPageType}_raw`, text, true, 'SUCCESS', projectId);
+            saveJsonToFile(`${pageType}_raw`, text, true, 'SUCCESS', projectId);
             
             // Parse and validate
             designJson = repairJSON(text);
@@ -1260,7 +1270,7 @@ app.post('/api/generate-next-page', async (req, res) => {
                 
                 // Save parsed JSON
                 const parsedJson = JSON.stringify(designJson, null, 2);
-                filePath = saveJsonToFile(nextPageType, parsedJson, false, 'SUCCESS', projectId);
+                filePath = saveJsonToFile(pageType, parsedJson, false, 'SUCCESS', projectId);
             } else {
                 throw new Error('Invalid JSON structure - no frames array');
             }
@@ -1270,29 +1280,28 @@ app.post('/api/generate-next-page', async (req, res) => {
             
             // Save failed responses
             if (rawResponse) {
-                saveJsonToFile(`${nextPageType}_raw`, rawResponse, true, 'FAILED', projectId);
+                saveJsonToFile(`${pageType}_raw`, rawResponse, true, 'FAILED', projectId);
             }
             
             const errorInfo = {
                 timestamp: new Date().toISOString(),
-                pageType: nextPageType,
+                pageType: pageType,
                 error: error.message,
                 projectId: projectId
             };
-            saveJsonToFile(`${nextPageType}_error`, JSON.stringify(errorInfo, null, 2), false, 'FAILED', projectId);
+            saveJsonToFile(`${pageType}_error`, JSON.stringify(errorInfo, null, 2), false, 'FAILED', projectId);
             
             // Use fallback
             console.log('📦 Using fallback design');
-            designJson = createFallbackDesignForPage(nextPageType, project);
-            filePath = saveJsonToFile(nextPageType, JSON.stringify(designJson, null, 2), false, 'FALLBACK', projectId);
+            designJson = createFallbackDesignForPage(pageType, project);
+            filePath = saveJsonToFile(pageType, JSON.stringify(designJson, null, 2), false, 'FALLBACK', projectId);
         }
 
         // Create page data object
         const pageData = {
-            id: `${projectId}_page_${project.currentPageIndex}`,
-            type: nextPageType,
-            name: designJson.frames[0]?.name || `${nextPageType}_page`,
-            index: project.currentPageIndex,
+            id: `${projectId}_page_${pageType}_${Date.now()}`,
+            type: pageType,
+            name: designJson.frames[0]?.name || `${pageType}_page`,
             json: designJson,
             filePath: filePath,
             generatedAt: new Date().toISOString(),
@@ -1305,33 +1314,30 @@ app.post('/api/generate-next-page', async (req, res) => {
 
         const totalTime = ((Date.now() - startTime)/1000).toFixed(1);
         console.log('\n' + '='.repeat(60));
-        console.log('✅ PAGE GENERATION COMPLETE');
+        console.log('✅ PAGE GENERATION COMPLETE - RETURNING JSON');
         console.log('='.repeat(60));
         console.log(`⏱️  Total time: ${totalTime}s`);
         console.log(`🤖 Model used: ${modelUsed}`);
-        console.log(`📄 Page type: ${nextPageType}`);
+        console.log(`📄 Page type: ${pageType}`);
         console.log(`📦 Frames created: ${designJson.frames.length}`);
         console.log(`💾 File saved: ${filePath}`);
         console.log('='.repeat(60));
 
-        // Send response
+        // IMMEDIATE RESPONSE - Return the generated page JSON right away
         res.json({
             success: true,
             projectId: project.id,
             page: {
-                type: nextPageType,
+                type: pageType,
                 name: pageData.name,
-                index: pageData.index,
                 frameCount: designJson.frames.length,
-                filePath: filePath
+                filePath: filePath,
+                generationTime: `${totalTime}s`
             },
-            status: 'in_progress',
-            progress: {
-                current: project.currentPageIndex,
-                total: project.totalPages,
-                remaining: project.pendingPages.length
-            },
-            nextPage: project.pendingPages.length > 0 ? project.pendingPages[0] : null,
+            // RETURN THE ACTUAL FIGMA JSON FOR IMMEDIATE USE
+            figmaJson: designJson,
+            message: `Page "${pageType}" generated successfully. Call this endpoint again with next pageType to continue.`,
+            remainingPages: project.pendingPages,
             timestamp: new Date().toISOString()
         });
 
@@ -1342,6 +1348,13 @@ app.post('/api/generate-next-page', async (req, res) => {
             error: error.message
         });
     }
+});
+
+// 3. Legacy endpoint - kept for backward compatibility
+app.post('/api/generate-next-page', async (req, res) => {
+    // Redirect to new endpoint
+    req.body.pageType = req.body.pageType || getNextPageType(getProject(req.body.projectId));
+    return app._router.handle(req, res, () => {});
 });
 
 // 3. Get project status
@@ -1461,9 +1474,11 @@ app.use('*', (req, res) => {
         available: {
             'GET /': 'Health check',
             'GET /api/status': 'Server status',
+            'POST /api/create-blueprint': 'Step 1: Create website blueprint/plan',
+            'POST /api/generate-page': 'Step 2: Generate specific page (login, home, detail, etc.)',
             'POST /api/generate-design': 'Generate single design (legacy)',
-            'POST /api/generate-project': 'Initialize multi-page project',
-            'POST /api/generate-next-page': 'Generate next page in project',
+            'POST /api/generate-project': 'Initialize multi-page project (legacy)',
+            'POST /api/generate-next-page': 'Generate next page (legacy)',
             'GET /api/project/:projectId/status': 'Get project status',
             'GET /api/project/:projectId/pages': 'Get all project pages',
             'GET /api/debug/files': 'List all saved JSON files',
@@ -1485,9 +1500,11 @@ const server = app.listen(port, '0.0.0.0', () => {
     console.log(`📁 Debug directory: ${DEBUG_DIR}`);
     console.log(`✨ Gemini API: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
     console.log('='.repeat(60));
-    console.log('📡 Endpoints:');
-    console.log('   GET  /');
-    console.log('   GET  /api/status');
+    console.log('📡 NEW WORKFLOW Endpoints:');
+    console.log('   POST /api/create-blueprint    - Step 1: Create website blueprint');
+    console.log('   POST /api/generate-page       - Step 2: Generate specific page (returns JSON immediately)');
+    console.log('');
+    console.log('📡 Legacy Endpoints:');
     console.log('   POST /api/generate-design     - Single page generation');
     console.log('   POST /api/generate-project    - Initialize multi-page project');
     console.log('   POST /api/generate-next-page  - Generate next page');
