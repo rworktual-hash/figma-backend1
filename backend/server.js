@@ -805,7 +805,8 @@ app.post('/api/generate-design', async (req, res) => {
 
         let designJson;
         let modelUsed = 'gemini-3-pro-preview';
-        let startTime = Date.now();
+        let startTime = Date.now(); 
+        
         let rawResponse = null;
 
         try {
