@@ -70,7 +70,7 @@ Keep designs clean and modern. Return ONLY the JSON, no other text.
 // ===========================================
 // FUNCTION TO SAVE JSON TO FILE
 // ===========================================
-function saveJsonToFile(prompt, jsonData, isRaw = false) {
+function saveJsonToFile(prompt, jsonData, isRaw = false, status = 'SUCCESS') {
     try {
         const timestamp = Date.now();
         const date = new Date().toISOString().replace(/[:.]/g, '-');
@@ -78,9 +78,9 @@ function saveJsonToFile(prompt, jsonData, isRaw = false) {
         
         let filename;
         if (isRaw) {
-            filename = `raw_${promptSlug}_${date}.txt`;
+            filename = `${status}_raw_${promptSlug}_${date}.txt`;
         } else {
-            filename = `parsed_${promptSlug}_${date}.json`;
+            filename = `${status}_parsed_${promptSlug}_${date}.txt`;
         }
         
         const filePath = path.join(DEBUG_DIR, filename);
@@ -271,14 +271,14 @@ app.post('/api/generate-design', async (req, res) => {
             
             // SAVE RAW RESPONSE TO FILE
             rawResponse = text;
-            saveJsonToFile(prompt, text, true);
+            saveJsonToFile(prompt, text, true, 'SUCCESS');
             
             designJson = repairJSON(text);
             
             if (designJson && designJson.frames) {
                 console.log('✅ Model succeeded');
                 // SAVE PARSED JSON TO FILE
-                saveJsonToFile(prompt, JSON.stringify(designJson, null, 2), false);
+                saveJsonToFile(prompt, JSON.stringify(designJson, null, 2), false, 'SUCCESS');
             } else {
                 console.log('⚠️ Invalid JSON structure');
                 throw new Error('Invalid JSON structure');
@@ -287,14 +287,19 @@ app.post('/api/generate-design', async (req, res) => {
         } catch (error) {
             console.log('⚠️ Model failed:', error.message);
             
-            // Save error info
+            // Save raw response that failed to parse with FAILED status
+            if (rawResponse) {
+                saveJsonToFile(prompt, rawResponse, true, 'FAILED');
+            }
+            
+            // Save error info with FAILED status
             const errorInfo = {
                 timestamp: new Date().toISOString(),
                 prompt: prompt,
                 error: error.message,
                 rawResponse: rawResponse || 'No raw response'
             };
-            saveJsonToFile('error_' + prompt, JSON.stringify(errorInfo, null, 2), true);
+            saveJsonToFile('error_' + prompt, JSON.stringify(errorInfo, null, 2), false, 'FAILED');
             
             console.log('📦 Using fallback design');
             designJson = createFallbackDesign(prompt);
