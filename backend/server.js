@@ -11,22 +11,65 @@ const port = process.env.PORT || 3000;
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Enable CORS for Figma
+// Enable CORS for Figma - more permissive for plugin environments
 app.use(cors({
-    origin: ['null', 'https://www.figma.com', 'http://localhost:*', 'file://'],
-    methods: ['GET', 'POST', 'OPTIONS'],
-    credentials: true
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl, or Figma plugins)
+        // and any localhost origin
+        if (!origin || 
+            origin.includes('localhost') || 
+            origin.includes('127.0.0.1') ||
+            origin === 'null' ||
+            origin.includes('figma.com')) {
+            callback(null, true);
+        } else {
+            callback(null, true); // Allow all origins for now (development)
+        }
+    },
+    methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 }));
 
+// Handle OPTIONS preflight
+app.options('*', cors());
+
 app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ===========================================
+// REQUEST LOGGING MIDDLEWARE
+// ===========================================
+app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+    next();
+});
 
 // ===========================================
 // CREATE DEBUG DIRECTORY IF IT DOESN'T EXIST
 // ===========================================
-const DEBUG_DIR = path.join(__dirname, 'debug');
-if (!fs.existsSync(DEBUG_DIR)) {
-    fs.mkdirSync(DEBUG_DIR, { recursive: true });
-    console.log('📁 Created debug directory:', DEBUG_DIR);
+const DEBUG_DIR = path.resolve(__dirname, 'debug');
+console.log('📁 Debug directory path:', DEBUG_DIR);
+
+try {
+    if (!fs.existsSync(DEBUG_DIR)) {
+        fs.mkdirSync(DEBUG_DIR, { recursive: true });
+        console.log('✅ Created debug directory:', DEBUG_DIR);
+    } else {
+        console.log('✅ Debug directory exists:', DEBUG_DIR);
+    }
+    
+    // Test write permissions
+    const testFile = path.join(DEBUG_DIR, '.test_write');
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+    console.log('✅ Debug directory is writable');
+} catch (error) {
+    console.error('❌ Debug directory error:', error.message);
+    console.error('   Please check permissions for:', DEBUG_DIR);
 }
 
 // ===========================================
@@ -72,9 +115,15 @@ Keep designs clean and modern. Return ONLY the JSON, no other text.
 // ===========================================
 function saveJsonToFile(prompt, jsonData, isRaw = false, status = 'SUCCESS') {
     try {
+        // Ensure debug directory exists
+        if (!fs.existsSync(DEBUG_DIR)) {
+            fs.mkdirSync(DEBUG_DIR, { recursive: true });
+            console.log('📁 Created debug directory on demand:', DEBUG_DIR);
+        }
+
         const timestamp = Date.now();
         const date = new Date().toISOString().replace(/[:.]/g, '-');
-        const promptSlug = prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '_');
+        const promptSlug = (prompt || 'unknown').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '_');
         
         let filename;
         if (isRaw) {
@@ -84,11 +133,20 @@ function saveJsonToFile(prompt, jsonData, isRaw = false, status = 'SUCCESS') {
         }
         
         const filePath = path.join(DEBUG_DIR, filename);
-        fs.writeFileSync(filePath, jsonData);
-        console.log(`💾 Saved to file: ${filename}`);
+        
+        // Ensure we have data to write
+        if (!jsonData) {
+            console.warn('⚠️ No data provided to save');
+            return null;
+        }
+        
+        fs.writeFileSync(filePath, jsonData, 'utf8');
+        console.log(`💾 Saved to file: ${filename} (${Buffer.byteLength(jsonData, 'utf8')} bytes)`);
         return filePath;
     } catch (error) {
         console.error('❌ Error saving file:', error.message);
+        console.error('   Directory:', DEBUG_DIR);
+        console.error('   Error code:', error.code);
         return null;
     }
 }
@@ -553,12 +611,28 @@ app.post('/api/process', (req, res) => {
 });
 
 // ===========================================
+// ERROR HANDLING MIDDLEWARE
+// ===========================================
+app.use((err, req, res, next) => {
+    console.error('❌ Unhandled error:', err.message);
+    console.error('Stack:', err.stack);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: err.message
+    });
+});
+
+// ===========================================
 // 404 HANDLER
 // ===========================================
 app.use('*', (req, res) => {
+    console.log(`⚠️ 404 Not Found: ${req.method} ${req.path}`);
     res.status(404).json({
         success: false,
         error: 'Endpoint not found',
+        path: req.path,
+        method: req.method,
         available: {
             'GET /': 'Health check',
             'GET /api/status': 'Server status',
@@ -573,11 +647,12 @@ app.use('*', (req, res) => {
 // ===========================================
 // START SERVER
 // ===========================================
-app.listen(port, '0.0.0.0', () => {
+const server = app.listen(port, '0.0.0.0', () => {
+    const host = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
     console.log('\n' + '='.repeat(60));
     console.log('🚀 BACKEND SERVER STARTED');
     console.log('='.repeat(60));
-    console.log(`📍 URL: https://figma-backend-rahul.onrender.com`);
+    console.log(`📍 URL: ${host}`);
     console.log(`📡 Port: ${port}`);
     console.log(`📁 Debug directory: ${DEBUG_DIR}`);
     console.log(`✨ Gemini API: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
@@ -590,4 +665,12 @@ app.listen(port, '0.0.0.0', () => {
     console.log('   GET  /api/debug/files      - List saved JSON files');
     console.log('   GET  /api/debug/file/:name  - Download specific file');
     console.log('='.repeat(60) + '\n');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+    console.error('❌ Server error:', error.message);
+    if (error.code === 'EADDRINUSE') {
+        console.error(`   Port ${port} is already in use`);
+    }
 });
