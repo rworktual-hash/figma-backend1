@@ -804,15 +804,15 @@ app.post('/api/generate-design', async (req, res) => {
         }
 
         let designJson;
-        let modelUsed = 'gemini-2.5-flash';
+        let modelUsed = 'gemini-3-pro-preview';
         let startTime = Date.now();
         let rawResponse = null;
 
         try {
-            console.log('\n📤 Trying model: gemini-2.5-flash');
+            console.log('\n📤 Trying model: gemini-3-pro-preview');
             
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash",
+                model: "gemini-3-pro-preview",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 8192,
@@ -1035,7 +1035,7 @@ app.post('/api/generate-next-page', async (req, res) => {
             console.log('\n📤 Generating with Gemini...');
             
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash",
+                model: "gemini-3-pro-preview",
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 8192,
