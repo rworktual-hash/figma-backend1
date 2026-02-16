@@ -368,26 +368,33 @@ function analyzeDescriptionForPages(description) {
     const lowerDesc = description.toLowerCase();
     const pages = [];
     
-    if (lowerDesc.includes('login') || lowerDesc.includes('auth')) {
-        pages.push(PAGE_TYPES.LOGIN);
-    }
+    // ALWAYS start with login/signup first
+    pages.push(PAGE_TYPES.LOGIN);
     
+    // ALWAYS second: Home page
     pages.push(PAGE_TYPES.HOME);
     
-    if (lowerDesc.includes('feature')) {
+    // Third: Features if mentioned
+    if (lowerDesc.includes('feature') || lowerDesc.includes('service')) {
         pages.push(PAGE_TYPES.FEATURES);
     }
     
-    if (lowerDesc.includes('about')) {
+    // Fourth: About if mentioned
+    if (lowerDesc.includes('about') || lowerDesc.includes('company') || lowerDesc.includes('team')) {
         pages.push(PAGE_TYPES.ABOUT);
     }
     
-    if (lowerDesc.includes('contact')) {
+    // Fifth: Contact if mentioned
+    if (lowerDesc.includes('contact') || lowerDesc.includes('reach') || lowerDesc.includes('support')) {
         pages.push(PAGE_TYPES.CONTACT);
     }
     
-    if (pages.length < 3) {
-        pages.push(PAGE_TYPES.DETAIL);
+    // Add detail pages for interactive elements (always at least 2)
+    pages.push(PAGE_TYPES.DETAIL);
+    pages.push(PAGE_TYPES.DETAIL);
+    
+    // Add more detail pages if description suggests complexity
+    if (lowerDesc.includes('product') || lowerDesc.includes('shop') || lowerDesc.includes('store')) {
         pages.push(PAGE_TYPES.DETAIL);
     }
     
