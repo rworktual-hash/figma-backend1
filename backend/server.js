@@ -77,11 +77,24 @@ You are a Figma JSON generator. Create UI designs in Figma format.
 CRITICAL RULES:
 1. Return ONLY valid JSON with a "frames" array
 2. Each frame needs: type, name, width, height, backgroundColor, children array
-3. Use hex colors: "#FFFFFF", "#000000", "#007AFF", "#4CAF50", "#FF4444"
-4. Valid element types: text, rectangle, button, circle, line, icon, group, input, frame
-5. All elements must have x, y coordinates
-6. Buttons should have: type, text, width, height, backgroundColor, textColor, x, y, cornerRadius
-7. Input fields should have: type, placeholder, width, height, backgroundColor, x, y
+3. Valid element types: text, rectangle, button, circle, line, icon, group, input, frame
+4. All elements must have x, y coordinates
+5. Buttons should have: type, text, width, height, backgroundColor, textColor, x, y, cornerRadius
+6. Input fields should have: type, placeholder, width, height, backgroundColor, x, y
+7. Use APPROPRIATE COLORS based on the project type - analyze the project description to determine the right color scheme
+8. Each project type has distinct colors - do not use generic blue/white for everything
+
+COLOR SCHEME GUIDELINES:
+- Technology/SaaS: Blues (#2563EB, #3B82F6), whites, grays
+- Healthcare/Medical: Teals (#14B8A6), soft blues (#60A5FA), clean whites
+- Finance/Banking: Deep blues (#1E40AF), golds (#D97706), professional grays
+- E-commerce/Retail: Vibrant oranges (#EA580C), reds (#DC2626), energetic colors
+- Education: Warm yellows (#F59E0B), greens (#10B981), friendly blues
+- Food/Restaurant: Warm reds (#B91C1C), oranges (#EA580C), appetizing yellows
+- Fitness/Gym: Bold reds (#DC2626), blacks (#111827), energetic oranges
+- Nature/Environment: Greens (#16A34A), earth tones (#92400E), sky blues
+- Luxury/Premium: Blacks (#000000), golds (#D97706), deep purples (#7C3AED)
+- Creative/Agency: Purples (#7C3AED), pinks (#EC4899), creative gradients
 
 EXAMPLE STRUCTURE:
 {
@@ -127,9 +140,15 @@ Design requirements:
 - Use consistent spacing (24-32px between elements)
 - Input fields: 320px width, 48px height, rounded corners (8px)
 - Primary button: Full width of inputs, 48px height, prominent color
-- Professional color scheme (blues, whites, light grays)
+- Use PROJECT-SPECIFIC color scheme - analyze the project type and use appropriate colors
+- Background should complement the brand colors
+- Typography should be modern and readable
 
-CRITICAL: Return ONLY valid JSON. All interactive elements must be clearly labeled.
+CRITICAL RULES:
+1. Return ONLY valid JSON
+2. Use colors that match the project type (not generic blue)
+3. All interactive elements must be clearly labeled
+4. Include proper visual hierarchy
 `;
 
 const HOME_PAGE_PROMPT = `
@@ -144,14 +163,28 @@ Create a comprehensive home page with these sections:
 6. Footer with links and copyright
 
 Design requirements:
-- Professional, modern design
-- Clear visual hierarchy
+- Professional, modern design with PROJECT-SPECIFIC colors
+- Clear visual hierarchy with proper contrast
 - Multiple interactive buttons that could link to other pages
-- Consistent color scheme
+- Use colors based on project type analysis:
+  * Tech: Blues, modern grays
+  * Food: Warm reds, oranges, yellows
+  * Fitness: Bold reds, blacks, energetic tones
+  * Healthcare: Teals, soft blues, clean whites
+  * Finance: Deep blues, golds, professional tones
+  * Education: Warm yellows, greens, friendly colors
+  * E-commerce: Vibrant oranges, reds, energetic
+  * Nature: Greens, earth tones, sky blues
+  * Luxury: Blacks, golds, deep purples
+  * Creative: Purples, pinks, creative gradients
 - Responsive layout (1440px width)
+- Proper spacing and typography
+- Visual elements that reflect the project type
 
-CRITICAL: Include multiple buttons that would require detail pages (e.g., "Learn More", "Get Started", "View Details", "Contact Us").
-Return ONLY valid JSON with all interactive elements clearly labeled.
+CRITICAL: 
+1. Include multiple buttons that would require detail pages (e.g., "Learn More", "Get Started", "View Details", "Contact Us")
+2. Use APPROPRIATE colors for the project type - do not default to blue
+3. Return ONLY valid JSON with all interactive elements clearly labeled
 `;
 
 const DETAIL_PAGE_PROMPT = `
@@ -169,11 +202,18 @@ Page structure:
 
 Design requirements:
 - Match the design system from previous pages (colors, typography, spacing)
+- Use the SAME color scheme as the home page for consistency
 - Professional layout with good readability
 - Clear back navigation
 - Relevant action buttons
+- Content should be detailed and informative
+- Visual elements should support the content
 
-CRITICAL: Return ONLY valid JSON. Maintain consistency with the overall website design.
+CRITICAL: 
+1. Maintain color consistency with previous pages
+2. Use the project-specific color scheme (not generic colors)
+3. Return ONLY valid JSON
+4. Ensure visual hierarchy is clear
 `;
 
 // ===========================================
@@ -354,50 +394,200 @@ function analyzeDescriptionForPages(description) {
     return pages;
 }
 
+function detectProjectType(description, projectName) {
+    const text = (description + ' ' + projectName).toLowerCase();
+    
+    if (text.includes('food') || text.includes('restaurant') || text.includes('cafe') || text.includes('kitchen') || text.includes('dining') || text.includes('menu')) {
+        return {
+            type: 'food',
+            primary: '#EA580C',
+            secondary: '#F59E0B',
+            background: '#FFFBEB',
+            accent: '#B91C1C',
+            description: 'Warm appetizing colors - oranges, reds, yellows'
+        };
+    }
+    if (text.includes('fitness') || text.includes('gym') || text.includes('workout') || text.includes('health') || text.includes('exercise') || text.includes('training')) {
+        return {
+            type: 'fitness',
+            primary: '#DC2626',
+            secondary: '#111827',
+            background: '#F3F4F6',
+            accent: '#EA580C',
+            description: 'Bold energetic colors - reds, blacks, oranges'
+        };
+    }
+    if (text.includes('tech') || text.includes('software') || text.includes('app') || text.includes('digital') || text.includes('saas') || text.includes('platform')) {
+        return {
+            type: 'tech',
+            primary: '#2563EB',
+            secondary: '#3B82F6',
+            background: '#F8FAFC',
+            accent: '#1E40AF',
+            description: 'Modern tech blues with clean grays'
+        };
+    }
+    if (text.includes('finance') || text.includes('bank') || text.includes('money') || text.includes('invest') || text.includes('crypto') || text.includes('trading')) {
+        return {
+            type: 'finance',
+            primary: '#1E40AF',
+            secondary: '#D97706',
+            background: '#F9FAFB',
+            accent: '#059669',
+            description: 'Professional deep blues with gold accents'
+        };
+    }
+    if (text.includes('health') || text.includes('medical') || text.includes('hospital') || text.includes('clinic') || text.includes('doctor') || text.includes('care')) {
+        return {
+            type: 'healthcare',
+            primary: '#14B8A6',
+            secondary: '#60A5FA',
+            background: '#F0FDFA',
+            accent: '#0D9488',
+            description: 'Clean teals and soft blues for trust'
+        };
+    }
+    if (text.includes('education') || text.includes('school') || text.includes('learn') || text.includes('course') || text.includes('academy') || text.includes('student')) {
+        return {
+            type: 'education',
+            primary: '#F59E0B',
+            secondary: '#10B981',
+            background: '#FFFBEB',
+            accent: '#3B82F6',
+            description: 'Warm friendly yellows and greens'
+        };
+    }
+    if (text.includes('shop') || text.includes('store') || text.includes('ecommerce') || text.includes('retail') || text.includes('product') || text.includes('buy')) {
+        return {
+            type: 'ecommerce',
+            primary: '#EA580C',
+            secondary: '#DC2626',
+            background: '#FFF7ED',
+            accent: '#F97316',
+            description: 'Vibrant oranges and reds for energy'
+        };
+    }
+    if (text.includes('nature') || text.includes('eco') || text.includes('green') || text.includes('environment') || text.includes('organic') || text.includes('sustainable')) {
+        return {
+            type: 'nature',
+            primary: '#16A34A',
+            secondary: '#0EA5E9',
+            background: '#F0FDF4',
+            accent: '#15803D',
+            description: 'Natural greens and earth tones'
+        };
+    }
+    if (text.includes('luxury') || text.includes('premium') || text.includes('exclusive') || text.includes('high-end') || text.includes('elegant')) {
+        return {
+            type: 'luxury',
+            primary: '#000000',
+            secondary: '#D97706',
+            background: '#FAFAFA',
+            accent: '#7C3AED',
+            description: 'Sophisticated blacks with gold accents'
+        };
+    }
+    if (text.includes('creative') || text.includes('design') || text.includes('art') || text.includes('agency') || text.includes('studio') || text.includes('portfolio')) {
+        return {
+            type: 'creative',
+            primary: '#7C3AED',
+            secondary: '#EC4899',
+            background: '#FAF5FF',
+            accent: '#8B5CF6',
+            description: 'Creative purples and pinks'
+        };
+    }
+    
+    // Default with variety based on project name hash
+    const colors = [
+        { primary: '#2563EB', secondary: '#3B82F6', background: '#F8FAFC', accent: '#1E40AF' }, // Blue
+        { primary: '#16A34A', secondary: '#22C55E', background: '#F0FDF4', accent: '#15803D' }, // Green
+        { primary: '#DC2626', secondary: '#EF4444', background: '#FEF2F2', accent: '#B91C1C' }, // Red
+        { primary: '#7C3AED', secondary: '#8B5CF6', background: '#FAF5FF', accent: '#6D28D9' }, // Purple
+        { primary: '#EA580C', secondary: '#F97316', background: '#FFF7ED', accent: '#C2410C' }, // Orange
+    ];
+    const index = projectName.length % colors.length;
+    const color = colors[index];
+    
+    return {
+        type: 'default',
+        ...color,
+        description: 'Modern professional colors'
+    };
+}
+
 function buildGenerationPrompt(project, pageType) {
     const projectName = project.name;
     const description = project.description;
+    const colorScheme = detectProjectType(description, projectName);
+    
+    const colorInstructions = `
+COLOR SCHEME (USE THESE EXACT COLORS):
+- Primary Color: ${colorScheme.primary} - Use for main buttons, headers, key elements
+- Secondary Color: ${colorScheme.secondary} - Use for accents, hover states
+- Background: ${colorScheme.background} - Use for page backgrounds
+- Accent Color: ${colorScheme.accent} - Use for highlights, links
+- Project Type: ${colorScheme.type} - ${colorScheme.description}
+
+IMPORTANT: Use these specific hex colors throughout the design. Do not use generic blue #007AFF.
+`;
     
     switch (pageType) {
         case PAGE_TYPES.LOGIN:
-            return `Create a login page for: ${projectName}. ${description}. Make it complete with form fields and buttons.`;
+            return `Create a login page for: ${projectName}. ${description}. ${colorInstructions} Make it complete with form fields and buttons. Use the specified color scheme consistently.`;
         case PAGE_TYPES.HOME:
-            return `Create a home/landing page for: ${projectName}. ${description}. Include navigation, hero, features, and multiple CTA buttons.`;
+            return `Create a home/landing page for: ${projectName}. ${description}. ${colorInstructions} Include navigation, hero, features, and multiple CTA buttons. Use the specified colors for all UI elements.`;
         case PAGE_TYPES.DETAIL:
             const elementIndex = project.pages.length > 0 ? project.pages.length - 1 : 0;
             if (project.interactiveElements[elementIndex]) {
                 const element = project.interactiveElements[elementIndex];
-                return `Create a detail page for: "${element.text}" from ${projectName}. ${description}. This page should expand on this feature.`;
+                return `Create a detail page for: "${element.text}" from ${projectName}. ${description}. ${colorInstructions} This page should expand on this feature. Maintain color consistency with the home page.`;
             }
-            return `Create a detail/content page for: ${projectName}. ${description}. Include detailed information about a specific feature or section.`;
+            return `Create a detail/content page for: ${projectName}. ${description}. ${colorInstructions} Include detailed information about a specific feature or section.`;
         case PAGE_TYPES.CONTACT:
-            return `Create a contact page for: ${projectName}. ${description}. Include contact form, contact info, and business hours.`;
+            return `Create a contact page for: ${projectName}. ${description}. ${colorInstructions} Include contact form, contact info, and business hours.`;
         case PAGE_TYPES.ABOUT:
-            return `Create an about page for: ${projectName}. ${description}. Include company story, team, mission/vision.`;
+            return `Create an about page for: ${projectName}. ${description}. ${colorInstructions} Include company story, team, mission/vision.`;
         case PAGE_TYPES.FEATURES:
-            return `Create a features page for: ${projectName}. ${description}. Include detailed feature descriptions and benefits.`;
+            return `Create a features page for: ${projectName}. ${description}. ${colorInstructions} Include detailed feature descriptions and benefits.`;
         default:
-            return `Create a page for: ${projectName}. ${description}`;
+            return `Create a page for: ${projectName}. ${description}. ${colorInstructions}`;
     }
 }
 
-function getPagePrompt(pageType) {
+function getPagePrompt(pageType, project = null) {
+    let basePrompt;
+    
     switch (pageType) {
         case PAGE_TYPES.LOGIN:
-            return LOGIN_PAGE_PROMPT;
+            basePrompt = LOGIN_PAGE_PROMPT;
+            break;
         case PAGE_TYPES.HOME:
-            return HOME_PAGE_PROMPT;
+            basePrompt = HOME_PAGE_PROMPT;
+            break;
         case PAGE_TYPES.DETAIL:
-            return DETAIL_PAGE_PROMPT;
+            basePrompt = DETAIL_PAGE_PROMPT;
+            break;
         case PAGE_TYPES.CONTACT:
-            return DETAIL_PAGE_PROMPT + '\n\nThis is a CONTACT page. Include contact form, contact information, map placeholder, and business hours.';
+            basePrompt = DETAIL_PAGE_PROMPT + '\n\nThis is a CONTACT page. Include contact form, contact information, map placeholder, and business hours.';
+            break;
         case PAGE_TYPES.ABOUT:
-            return DETAIL_PAGE_PROMPT + '\n\nThis is an ABOUT page. Include company story, team section, mission/vision, and company values.';
+            basePrompt = DETAIL_PAGE_PROMPT + '\n\nThis is an ABOUT page. Include company story, team section, mission/vision, and company values.';
+            break;
         case PAGE_TYPES.FEATURES:
-            return DETAIL_PAGE_PROMPT + '\n\nThis is a FEATURES page. Include detailed feature descriptions, benefits, pricing tables, and comparison sections.';
+            basePrompt = DETAIL_PAGE_PROMPT + '\n\nThis is a FEATURES page. Include detailed feature descriptions, benefits, pricing tables, and comparison sections.';
+            break;
         default:
-            return BASE_SYSTEM_PROMPT;
+            basePrompt = BASE_SYSTEM_PROMPT;
     }
+    
+    // Add color reminder if project is available
+    if (project) {
+        const colorScheme = detectProjectType(project.description, project.name);
+        basePrompt += `\n\nCOLOR REMINDER: Use ${colorScheme.type} color scheme - Primary: ${colorScheme.primary}, Background: ${colorScheme.background}`;
+    }
+    
+    return basePrompt;
 }
 
 function buildPageContext(project, pageType) {
@@ -806,7 +996,7 @@ app.post('/api/generate-design', async (req, res) => {
         let designJson;
         let modelUsed = 'gemini-3-pro-preview';
         let startTime = Date.now(); 
-        
+
         let rawResponse = null;
 
         try {
@@ -1022,7 +1212,7 @@ app.post('/api/generate-next-page', async (req, res) => {
         }
 
         const pageContext = buildPageContext(project, nextPageType);
-        const systemPrompt = getPagePrompt(nextPageType);
+        const systemPrompt = getPagePrompt(nextPageType, project);
         const generationPrompt = buildGenerationPrompt(project, nextPageType);
 
         let designJson;
