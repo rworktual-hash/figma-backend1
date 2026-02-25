@@ -763,140 +763,65 @@ function repairJSON(str) {
 }
 
 // ===========================================
-// IMAGE URL ENRICHMENT FUNCTION (Updated with prompt-based keywords)
+// IMAGE URL ENRICHMENT WITH AI GENERATION (Pollinations.ai)
 // ===========================================
-function enrichWithImageUrls(node, projectType, prompt = '') {
+function enrichWithImageUrls(node, projectType, description) {
     if (!node || typeof node !== 'object') return;
-    
+
     if (Array.isArray(node)) {
-        node.forEach(function(item) { enrichWithImageUrls(item, projectType, prompt); });
+        node.forEach(function(item) { enrichWithImageUrls(item, projectType, description); });
         return;
     }
-    
+
     // If it's an object with type 'image' and no src/url/imageUrl yet
     if (node.type === 'image' && !node.src && !node.url && !node.imageUrl) {
-        var width = node.width || 600;
-        var height = node.height || 400;
-        
-        // Extract keywords from prompt to generate relevant images
-        var keywords = extractKeywordsFromPrompt(prompt, projectType);
-        
-        // Use keywords for a more relevant image
-        var seed = Math.floor(Math.random() * 10000);
-        var keywordForImage = keywords[Math.floor(Math.random() * keywords.length)];
-        
-        // Use proxy URL with keyword-based image search
-        var originalUrl = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
-        
-        // Try to get a relevant image using keyword (picsum uses seed-based images)
-        // For better relevance, we'll use keywords in the seed or as query
-        if (keywordForImage) {
-            // Use keyword as part of seed for variety but keep it deterministic
-            var keywordHash = keywordForImage.split('').reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);
-            seed = Math.abs(keywordHash + seed) % 10000;
-            originalUrl = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
-        }
-        
-        // Use proxy URL
-        node.src = BACKEND_URL + '/api/image-proxy?url=' + encodeURIComponent(originalUrl) + '&width=' + width + '&height=' + height;
-        
-        // Store the keyword for reference
-        node.imageKeyword = keywordForImage;
-        
-        console.log('📷 Generated relevant image with keyword:', keywordForImage, '| URL:', node.src);
+        const width = node.width || 600;
+        const height = node.height || 400;
+        const borderRadius = node.borderRadius || node.cornerRadius || 0;
+
+        // Build a rich prompt for the image based on the project description and the node's name
+        const imageContext = node.name || node.alt || 'image';
+        const styleHint = getStyleHint(projectType);      // adds style words like "modern", "professional"
+
+        // Combine everything into a concise prompt
+        let imagePrompt = `${description} – ${imageContext} – ${styleHint}`;
+        imagePrompt = imagePrompt.substring(0, 500);      // keep under 500 chars
+
+        // Use Pollinations.ai to generate the image on the fly
+        const encodedPrompt = encodeURIComponent(imagePrompt);
+        node.src = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`;
+
+        // Optional: keep a reference to the prompt for debugging
+        node.imagePrompt = imagePrompt;
+
+        console.log(`📷 AI image prompt: "${imagePrompt}" → ${node.src}`);
     }
-    
-    // Recurse into children
+
+    // Recurse into children and frames
     if (node.children && Array.isArray(node.children)) {
-        node.children.forEach(function(child) { enrichWithImageUrls(child, projectType, prompt); });
+        node.children.forEach(function(child) { enrichWithImageUrls(child, projectType, description); });
     }
     if (node.frames && Array.isArray(node.frames)) {
-        node.frames.forEach(function(frame) { enrichWithImageUrls(frame, projectType, prompt); });
+        node.frames.forEach(function(frame) { enrichWithImageUrls(frame, projectType, description); });
     }
 }
 
-// ===========================================
-// KEYWORD EXTRACTION FOR RELEVANT IMAGES
-// ===========================================
-function extractKeywordsFromPrompt(prompt, projectType) {
-    // Default keywords based on project type
-    var defaultKeywords = {
-        'food': ['restaurant', 'food', 'cooking', 'meal', 'cuisine'],
-        'fitness': ['gym', 'fitness', 'workout', 'exercise', 'health'],
-        'tech': ['technology', 'computer', 'code', 'digital', 'software'],
-        'finance': ['finance', 'business', 'money', 'banking', 'office'],
-        'healthcare': ['medical', 'health', 'hospital', 'doctor', 'care'],
-        'education': ['education', 'school', 'learning', 'books', 'student'],
-        'ecommerce': ['shopping', 'product', 'store', 'retail', 'bag'],
-        'nature': ['nature', 'forest', 'landscape', 'green', 'outdoor'],
-        'luxury': ['luxury', 'gold', 'elegant', 'premium', 'black'],
-        'creative': ['design', 'art', 'creative', 'colorful', 'abstract'],
-        'portfolio': ['portfolio', 'design', 'creative', 'workspace', 'desk'],
-        'modern': ['modern', 'minimal', 'clean', 'white', 'architecture']
+// Helper to add style words based on project type
+function getStyleHint(projectType) {
+    const hints = {
+        'food': 'warm appetizing, professional food photography',
+        'fitness': 'dynamic energetic, athletic lifestyle',
+        'tech': 'sleek modern, minimalist technology',
+        'finance': 'professional trustworthy, corporate',
+        'healthcare': 'calm caring, medical environment',
+        'education': 'friendly inspiring, learning atmosphere',
+        'ecommerce': 'vibrant commercial, product showcase',
+        'nature': 'serene natural landscape, organic',
+        'luxury': 'elegant sophisticated, premium quality',
+        'creative': 'artistic colorful, innovative design',
+        'modern': 'clean contemporary, professional'
     };
-    
-    // Get keywords from project type
-    var keywords = defaultKeywords[projectType] || defaultKeywords['modern'];
-    
-    // If prompt is provided, try to extract more specific keywords
-    if (prompt && typeof prompt === 'string') {
-        var promptLower = prompt.toLowerCase();
-        
-        // Check for specific terms in the prompt
-        var additionalKeywords = [];
-        
-        // Product/Ecommerce related
-        if (promptLower.includes('product') || promptLower.includes('shop') || promptLower.includes('buy')) {
-            additionalKeywords.push('product', 'shopping', 'store');
-        }
-        // Dashboard/Tech related
-        if (promptLower.includes('dashboard') || promptLower.includes('analytics') || promptLower.includes('chart')) {
-            additionalKeywords.push('technology', 'computer', 'data');
-        }
-        // Portfolio/Creative
-        if (promptLower.includes('portfolio') || promptLower.includes('design') || promptLower.includes('creative')) {
-            additionalKeywords.push('portfolio', 'design', 'workspace', 'art');
-        }
-        // Food/Restaurant
-        if (promptLower.includes('food') || promptLower.includes('restaurant') || promptLower.includes('menu')) {
-            additionalKeywords.push('food', 'restaurant', 'cooking');
-        }
-        // Finance
-        if (promptLower.includes('finance') || promptLower.includes('bank') || promptLower.includes('money')) {
-            additionalKeywords.push('finance', 'business', 'office');
-        }
-        // Medical
-        if (promptLower.includes('medical') || promptLower.includes('health') || promptLower.includes('hospital')) {
-            additionalKeywords.push('medical', 'health', 'hospital');
-        }
-        // Real estate
-        if (promptLower.includes('real estate') || promptLower.includes('property') || promptLower.includes('house')) {
-            additionalKeywords.push('architecture', 'building', 'house');
-        }
-        // Travel
-        if (promptLower.includes('travel') || promptLower.includes('hotel') || promptLower.includes('booking')) {
-            additionalKeywords.push('travel', 'hotel', 'landscape');
-        }
-        // Dark theme
-        if (promptLower.includes('dark') || promptLower.includes('night')) {
-            additionalKeywords.push('dark', 'night', 'black');
-        }
-        // Team/People
-        if (promptLower.includes('team') || promptLower.includes('about us') || promptLower.includes('company')) {
-            additionalKeywords.push('team', 'office', 'people');
-        }
-        // Contact form
-        if (promptLower.includes('contact') || promptLower.includes('form') || promptLower.includes('message')) {
-            additionalKeywords.push('communication', 'phone', 'email');
-        }
-        
-        // Merge additional keywords
-        if (additionalKeywords.length > 0) {
-            keywords = additionalKeywords.concat(keywords);
-        }
-    }
-    
-    return keywords;
+    return hints[projectType] || 'high quality stock photo style';
 }
 
 // ===========================================
@@ -1628,16 +1553,8 @@ app.get('/api/image-proxy', async (req, res) => {
     try {
         console.log(`🖼️ Proxying image: ${url}`);
         
-        // Build the picsum URL with dimensions if provided
-        let imageUrl = url;
-        if (url.includes('picsum.photos') && width && height) {
-            // Extract seed from URL or generate one
-            const seedMatch = url.match(/seed\/(\d+)/);
-            const seed = seedMatch ? seedMatch[1] : Math.floor(Math.random() * 10000);
-            imageUrl = `https://picsum.photos/seed/${seed}/${width}/${height}`;
-        }
-        
-        const response = await fetch(imageUrl, {
+        // If it's a Pollinations URL, we can just fetch it directly
+        const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Figma-Plugin/1.0'
             }
@@ -1670,16 +1587,19 @@ app.post('/api/generate-image-url', async (req, res) => {
     
     const w = width || 400;
     const h = height || 300;
-    const seed = Math.floor(Math.random() * 10000);
     
-    // Return the proxy URL instead of direct picsum URL
-    const proxyUrl = `${BACKEND_URL}/api/image-proxy?url=${encodeURIComponent(`https://picsum.photos/seed/${seed}/${w}/${h}`)}&width=${w}&height=${h}`;
+    // Build a prompt from the keyword
+    const prompt = keyword || 'abstract design';
+    const encodedPrompt = encodeURIComponent(prompt);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${w}&height=${h}&nologo=true`;
+    
+    // Optionally proxy through our backend
+    const proxyUrl = `${BACKEND_URL}/api/image-proxy?url=${encodeURIComponent(pollinationsUrl)}&width=${w}&height=${h}`;
     
     res.json({
         success: true,
-        originalUrl: `https://picsum.photos/seed/${seed}/${w}/${h}`,
+        originalUrl: pollinationsUrl,
         proxyUrl: proxyUrl,
-        seed: seed,
         dimensions: { width: w, height: h }
     });
 });
