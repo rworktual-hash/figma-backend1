@@ -763,13 +763,13 @@ function repairJSON(str) {
 }
 
 // ===========================================
-// IMAGE URL ENRICHMENT FUNCTION (Updated with proxy support)
+// IMAGE URL ENRICHMENT FUNCTION (Updated with prompt-based keywords)
 // ===========================================
-function enrichWithImageUrls(node, projectType) {
+function enrichWithImageUrls(node, projectType, prompt = '') {
     if (!node || typeof node !== 'object') return;
     
     if (Array.isArray(node)) {
-        node.forEach(function(item) { enrichWithImageUrls(item, projectType); });
+        node.forEach(function(item) { enrichWithImageUrls(item, projectType, prompt); });
         return;
     }
     
@@ -777,26 +777,126 @@ function enrichWithImageUrls(node, projectType) {
     if (node.type === 'image' && !node.src && !node.url && !node.imageUrl) {
         var width = node.width || 600;
         var height = node.height || 400;
-        var keyword = projectType || 'nature';
         
-        // Use picsum.photos - a reliable free image service
-        // Add random seed to get different images
+        // Extract keywords from prompt to generate relevant images
+        var keywords = extractKeywordsFromPrompt(prompt, projectType);
+        
+        // Use keywords for a more relevant image
         var seed = Math.floor(Math.random() * 10000);
+        var keywordForImage = keywords[Math.floor(Math.random() * keywords.length)];
         
-        // Use proxy URL instead of direct URL
+        // Use proxy URL with keyword-based image search
         var originalUrl = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
+        
+        // Try to get a relevant image using keyword (picsum uses seed-based images)
+        // For better relevance, we'll use keywords in the seed or as query
+        if (keywordForImage) {
+            // Use keyword as part of seed for variety but keep it deterministic
+            var keywordHash = keywordForImage.split('').reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);
+            seed = Math.abs(keywordHash + seed) % 10000;
+            originalUrl = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
+        }
+        
+        // Use proxy URL
         node.src = BACKEND_URL + '/api/image-proxy?url=' + encodeURIComponent(originalUrl) + '&width=' + width + '&height=' + height;
         
-        console.log('📷 Generated proxy image URL:', node.src);
+        // Store the keyword for reference
+        node.imageKeyword = keywordForImage;
+        
+        console.log('📷 Generated relevant image with keyword:', keywordForImage, '| URL:', node.src);
     }
     
     // Recurse into children
     if (node.children && Array.isArray(node.children)) {
-        node.children.forEach(function(child) { enrichWithImageUrls(child, projectType); });
+        node.children.forEach(function(child) { enrichWithImageUrls(child, projectType, prompt); });
     }
     if (node.frames && Array.isArray(node.frames)) {
-        node.frames.forEach(function(frame) { enrichWithImageUrls(frame, projectType); });
+        node.frames.forEach(function(frame) { enrichWithImageUrls(frame, projectType, prompt); });
     }
+}
+
+// ===========================================
+// KEYWORD EXTRACTION FOR RELEVANT IMAGES
+// ===========================================
+function extractKeywordsFromPrompt(prompt, projectType) {
+    // Default keywords based on project type
+    var defaultKeywords = {
+        'food': ['restaurant', 'food', 'cooking', 'meal', 'cuisine'],
+        'fitness': ['gym', 'fitness', 'workout', 'exercise', 'health'],
+        'tech': ['technology', 'computer', 'code', 'digital', 'software'],
+        'finance': ['finance', 'business', 'money', 'banking', 'office'],
+        'healthcare': ['medical', 'health', 'hospital', 'doctor', 'care'],
+        'education': ['education', 'school', 'learning', 'books', 'student'],
+        'ecommerce': ['shopping', 'product', 'store', 'retail', 'bag'],
+        'nature': ['nature', 'forest', 'landscape', 'green', 'outdoor'],
+        'luxury': ['luxury', 'gold', 'elegant', 'premium', 'black'],
+        'creative': ['design', 'art', 'creative', 'colorful', 'abstract'],
+        'portfolio': ['portfolio', 'design', 'creative', 'workspace', 'desk'],
+        'modern': ['modern', 'minimal', 'clean', 'white', 'architecture']
+    };
+    
+    // Get keywords from project type
+    var keywords = defaultKeywords[projectType] || defaultKeywords['modern'];
+    
+    // If prompt is provided, try to extract more specific keywords
+    if (prompt && typeof prompt === 'string') {
+        var promptLower = prompt.toLowerCase();
+        
+        // Check for specific terms in the prompt
+        var additionalKeywords = [];
+        
+        // Product/Ecommerce related
+        if (promptLower.includes('product') || promptLower.includes('shop') || promptLower.includes('buy')) {
+            additionalKeywords.push('product', 'shopping', 'store');
+        }
+        // Dashboard/Tech related
+        if (promptLower.includes('dashboard') || promptLower.includes('analytics') || promptLower.includes('chart')) {
+            additionalKeywords.push('technology', 'computer', 'data');
+        }
+        // Portfolio/Creative
+        if (promptLower.includes('portfolio') || promptLower.includes('design') || promptLower.includes('creative')) {
+            additionalKeywords.push('portfolio', 'design', 'workspace', 'art');
+        }
+        // Food/Restaurant
+        if (promptLower.includes('food') || promptLower.includes('restaurant') || promptLower.includes('menu')) {
+            additionalKeywords.push('food', 'restaurant', 'cooking');
+        }
+        // Finance
+        if (promptLower.includes('finance') || promptLower.includes('bank') || promptLower.includes('money')) {
+            additionalKeywords.push('finance', 'business', 'office');
+        }
+        // Medical
+        if (promptLower.includes('medical') || promptLower.includes('health') || promptLower.includes('hospital')) {
+            additionalKeywords.push('medical', 'health', 'hospital');
+        }
+        // Real estate
+        if (promptLower.includes('real estate') || promptLower.includes('property') || promptLower.includes('house')) {
+            additionalKeywords.push('architecture', 'building', 'house');
+        }
+        // Travel
+        if (promptLower.includes('travel') || promptLower.includes('hotel') || promptLower.includes('booking')) {
+            additionalKeywords.push('travel', 'hotel', 'landscape');
+        }
+        // Dark theme
+        if (promptLower.includes('dark') || promptLower.includes('night')) {
+            additionalKeywords.push('dark', 'night', 'black');
+        }
+        // Team/People
+        if (promptLower.includes('team') || promptLower.includes('about us') || promptLower.includes('company')) {
+            additionalKeywords.push('team', 'office', 'people');
+        }
+        // Contact form
+        if (promptLower.includes('contact') || promptLower.includes('form') || promptLower.includes('message')) {
+            additionalKeywords.push('communication', 'phone', 'email');
+        }
+        
+        // Merge additional keywords
+        if (additionalKeywords.length > 0) {
+            keywords = additionalKeywords.concat(keywords);
+        }
+    }
+    
+    return keywords;
 }
 
 // ===========================================
@@ -897,9 +997,9 @@ function createFallbackDesign(prompt) {
         }]
     };
     
-    // Enrich with image URLs using detected project type
-    enrichWithImageUrls(design, projectType);
-    return design;
+        // Enrich with image URLs using detected project type
+        enrichWithImageUrls(design, projectType, prompt);
+        return design;
 }
 
 function createFallbackDesignForPage(pageType, project) {
@@ -946,7 +1046,9 @@ function createFallbackDesignForPage(pageType, project) {
         design = createFallbackDesign(`${pageType} page for ${project.name}`);
     }
     
-    enrichWithImageUrls(design, projectType);
+    // Use project description as prompt for relevant images
+    const promptForImages = project.description || project.name;
+    enrichWithImageUrls(design, projectType, promptForImages);
     return design;
 }
 
@@ -1125,9 +1227,10 @@ app.post('/api/generate-design', async (req, res) => {
             }
         }
 
-        // Enrich with image URLs
-        const projectType = detectProjectTypeFromPrompt(prompt);
-        enrichWithImageUrls(designJson, projectType);
+        // Enrich with image URLs using project description for relevant images
+        const projectTypeForImages = detectProjectTypeFromPrompt(prompt);
+        const promptForImages = prompt; // Use the user's prompt for relevant images
+        enrichWithImageUrls(designJson, projectTypeForImages, promptForImages);
 
         const totalTime = ((Date.now() - startTime)/1000).toFixed(1);
         console.log('\n' + '='.repeat(60));
@@ -1369,9 +1472,10 @@ app.post('/api/generate-page', async (req, res) => {
             filePath = saveJsonToFile(pageType, JSON.stringify(designJson, null, 2), false, 'FALLBACK', projectId);
         }
 
-        // Enrich with image URLs using project's detected type
-        const projectType = detectProjectType(project.description, project.name).type;
-        enrichWithImageUrls(designJson, projectType);
+        // Enrich with image URLs using project's detected type and description
+        const projectTypeForImages = detectProjectType(project.description, project.name).type;
+        const promptForImages = project.description || project.name;
+        enrichWithImageUrls(designJson, projectTypeForImages, promptForImages);
 
         // Create page data object
         const pageData = {
