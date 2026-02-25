@@ -761,30 +761,36 @@ function repairJSON(str) {
 }
 
 // ===========================================
-// IMAGE URL ENRICHMENT FUNCTION
+// IMAGE URL ENRICHMENT FUNCTION (Updated with working image service)
 // ===========================================
 function enrichWithImageUrls(node, projectType) {
     if (!node || typeof node !== 'object') return;
     
     if (Array.isArray(node)) {
-        node.forEach(item => enrichWithImageUrls(item, projectType));
+        node.forEach(function(item) { enrichWithImageUrls(item, projectType); });
         return;
     }
     
     // If it's an object with type 'image' and no src/url/imageUrl yet
     if (node.type === 'image' && !node.src && !node.url && !node.imageUrl) {
-        const width = node.width || 600;
-        const height = node.height || 400;
-        const keyword = projectType || 'modern';
-        node.src = `https://source.unsplash.com/random/${width}x${height}/?${keyword}`;
+        var width = node.width || 600;
+        var height = node.height || 400;
+        var keyword = projectType || 'nature';
+        
+        // Use picsum.photos - a reliable free image service
+        // Add random seed to get different images
+        var seed = Math.floor(Math.random() * 10000);
+        node.src = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
+        
+        console.log('📷 Generated image URL:', node.src);
     }
     
     // Recurse into children
     if (node.children && Array.isArray(node.children)) {
-        node.children.forEach(child => enrichWithImageUrls(child, projectType));
+        node.children.forEach(function(child) { enrichWithImageUrls(child, projectType); });
     }
     if (node.frames && Array.isArray(node.frames)) {
-        node.frames.forEach(frame => enrichWithImageUrls(frame, projectType));
+        node.frames.forEach(function(frame) { enrichWithImageUrls(frame, projectType); });
     }
 }
 
