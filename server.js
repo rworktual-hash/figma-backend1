@@ -7,6 +7,8 @@ require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+// Use hardcoded Render URL for proxy (update this if your URL changes)
+const BACKEND_URL = 'https://figma-backend-rahul.onrender.com';
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -761,7 +763,7 @@ function repairJSON(str) {
 }
 
 // ===========================================
-// IMAGE URL ENRICHMENT FUNCTION (Updated with working image service)
+// IMAGE URL ENRICHMENT FUNCTION (Updated with proxy support)
 // ===========================================
 function enrichWithImageUrls(node, projectType) {
     if (!node || typeof node !== 'object') return;
@@ -780,9 +782,12 @@ function enrichWithImageUrls(node, projectType) {
         // Use picsum.photos - a reliable free image service
         // Add random seed to get different images
         var seed = Math.floor(Math.random() * 10000);
-        node.src = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
         
-        console.log('📷 Generated image URL:', node.src);
+        // Use proxy URL instead of direct URL
+        var originalUrl = 'https://picsum.photos/seed/' + seed + '/' + width + '/' + height;
+        node.src = BACKEND_URL + '/api/image-proxy?url=' + encodeURIComponent(originalUrl) + '&width=' + width + '&height=' + height;
+        
+        console.log('📷 Generated proxy image URL:', node.src);
     }
     
     // Recurse into children
@@ -1507,15 +1512,71 @@ app.get('/api/project/:projectId/pages', (req, res) => {
 });
 
 // ===========================================
-// PROCESS DATA FROM FIGMA
+// IMAGE PROXY ENDPOINT - To bypass CORS issues
 // ===========================================
-app.post('/api/process', (req, res) => {
-    console.log('📥 Process endpoint received:', req.body);
+app.get('/api/image-proxy', async (req, res) => {
+    const { url, width, height } = req.query;
+    
+    if (!url) {
+        return res.status(400).json({ error: 'URL parameter is required' });
+    }
+    
+    try {
+        console.log(`🖼️ Proxying image: ${url}`);
+        
+        // Build the picsum URL with dimensions if provided
+        let imageUrl = url;
+        if (url.includes('picsum.photos') && width && height) {
+            // Extract seed from URL or generate one
+            const seedMatch = url.match(/seed\/(\d+)/);
+            const seed = seedMatch ? seedMatch[1] : Math.floor(Math.random() * 10000);
+            imageUrl = `https://picsum.photos/seed/${seed}/${width}/${height}`;
+        }
+        
+        const response = await fetch(imageUrl, {
+            headers: {
+                'User-Agent': 'Figma-Plugin/1.0'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        
+        // Determine content type
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        res.set('Content-Type', contentType);
+        res.set('Access-Control-Allow-Origin', '*');
+        
+        res.send(buffer);
+    } catch (error) {
+        console.error('❌ Image proxy error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ===========================================
+// GENERATE IMAGE URL (Returns a proxy URL)
+// ===========================================
+app.post('/api/generate-image-url', async (req, res) => {
+    const { width, height, keyword } = req.body;
+    
+    const w = width || 400;
+    const h = height || 300;
+    const seed = Math.floor(Math.random() * 10000);
+    
+    // Return the proxy URL instead of direct picsum URL
+    const proxyUrl = `${BACKEND_URL}/api/image-proxy?url=${encodeURIComponent(`https://picsum.photos/seed/${seed}/${w}/${h}`)}&width=${w}&height=${h}`;
+    
     res.json({
         success: true,
-        message: 'Data processed successfully!',
-        receivedAt: new Date().toISOString(),
-        data: req.body
+        originalUrl: `https://picsum.photos/seed/${seed}/${w}/${h}`,
+        proxyUrl: proxyUrl,
+        seed: seed,
+        dimensions: { width: w, height: h }
     });
 });
 
